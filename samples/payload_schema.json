@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "auditedYearsDetected",
+    "historicalData",
+    "companyFacilities",
+    "directorFacilities"
+  ],
+  "properties": {
+    "auditedYearsDetected": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 1
+    },
+    "historicalData": {
+      "type": "object"
+    },
+    "companyFacilities": {
+      "type": "array"
+    },
+    "directorFacilities": {
+      "type": "array"
+    },
+    "bankRulesFull": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

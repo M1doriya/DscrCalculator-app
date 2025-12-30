@@ -1,0 +1,22 @@
+{
+  "auditedYearsDetected": [
+    2024
+  ],
+  "historicalData": {
+    "fy2024": {
+      "revenue": 0,
+      "cogs": 0,
+      "otherIncome": 0,
+      "opexAdmin": 0,
+      "opexOther": 0,
+      "opex": 0,
+      "financeCosts": 0,
+      "depreciation": 0,
+      "tax": 0,
+      "netProfit": 0,
+      "ebitda": 0
+    }
+  },
+  "companyFacilities": [],
+  "directorFacilities": []
+}
