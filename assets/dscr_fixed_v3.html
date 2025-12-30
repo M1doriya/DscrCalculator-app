@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Projection & DSCR Calculator</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #6366f1;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 10px 25px rgba(0,0,0,0.08);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 30px;
+            border-radius: var(--radius);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .header-subtitle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-subtitle p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to right, #f8fafc 0%, white 100%);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .card-content {
+            padding: 25px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background: #f1f5f9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Input styling */
+        input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            text-align: right;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .annualize-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 26px;
+            background: #cbd5e1;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 5px;
+        }
+
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .summary-value.small {
+            font-size: 1.4rem;
+        }
+
+        /* Status badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            gap: 6px;
+        }
+
+        .badge-strong {
+            background: rgba(34,197,94,0.1);
+            color: var(--success);
+        }
+
+        .badge-marginal {
+            background: rgba(245,158,11,0.1);
+            color: var(--warning);
+        }
+
+        .badge-fail {
+            background: rgba(239,68,68,0.1);
+            color: var(--danger);
+        }
+
+        /* Gauge */
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .gauge {
+            width: 200px;
+            height: 100px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gauge-bg {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(from 180deg, var(--danger) 0deg 60deg, var(--warning) 60deg 120deg, var(--success) 120deg 180deg);
+            position: absolute;
+            top: 0;
+        }
+
+        .gauge-mask {
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        .gauge-needle {
+            width: 4px;
+            height: 80px;
+            background: var(--text);
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform-origin: bottom;
+            transform: translateX(-50%) rotate(-90deg);
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 2px;
+        }
+
+        .gauge-center {
+            width: 20px;
+            height: 20px;
+            background: var(--text);
+            border-radius: 50%;
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .gauge-value {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* Buttons in projection */
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-preset {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-preset:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-preset.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Highlight rows */
+        .highlight-row {
+            background: rgba(79,70,229,0.05);
+            font-weight: 700;
+        }
+
+        .total-row {
+            background: #f1f5f9;
+            font-weight: 800;
+            border-top: 2px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .header-subtitle { flex-direction: column; align-items: flex-start; }
+            .card-content { padding: 15px; }
+            table { font-size: 0.85rem; }
+            th, td { padding: 8px; }
+        }
+
+        /* Annualization inputs */
+        .annualize-inputs {
+            display: none;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .annualize-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .annualize-input-group label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .annualize-input-group input {
+            width: 100px;
+            text-align: center;
+        }
+
+        /* Bar Chart */
+        .bar-chart {
+            margin-top: 20px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .bar-label {
+            width: 60px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 30px;
+            background: #f1f5f9;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 15px;
+            transition: width 0.8s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+        }
+
+        .bar-value {
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        /* DSCR Analysis colors */
+        .dscr-card.success .card-icon { background: rgba(34,197,94,0.1); color: var(--success); }
+        .dscr-card.warning .card-icon { background: rgba(245,158,11,0.1); color: var(--warning); }
+        .dscr-card.danger .card-icon { background: rgba(239,68,68,0.1); color: var(--danger); }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            padding: 20px;
+        }
+
+        /* Divider */
+        .divider { height: 30px; background: rgba(255,255,255,0.3); margin: 0 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <h1>DSCR Debt Capacity Dashboard</h1>
+                <div class="header-subtitle">
+                    <p>MyTutor Template | Financial Projection & Bank DSCR Analysis</p>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="resetAll()">
+                            🔄 Reset
+                        </button>
+                        <button class="btn btn-primary" onclick="saveHTML()">
+                            💾 Save Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Projected P1 DSCR</div>
+                <div class="summary-value" id="sumDscr">0.00x</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Projected P1 EBITDA</div>
+                <div class="summary-value small" id="sumEbitda">RM 0</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Debt Service (Annual)</div>
+                <div class="summary-value small" id="sumDebtService">RM 0</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Overall Status</div>
+                <div class="summary-value" id="sumStatus">-</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Card: Financial Data Input -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(79,70,229,0.1); color: var(--primary);">
+                            📊
+                        </div>
+                        Section A: Audited Financials (Extracted)
+                    </div>
+                    <div class="annualize-toggle">
+                        <span>Annualize Mgmt</span>
+                        <div class="toggle-switch" id="annualizeToggle" onclick="toggleAnnualize()"></div>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameters</th>
+                                <th class="base-col">FY 2023<br>(Audited)</th>
+                                <th class="base-col">FY 2024<br>(Audited)</th>
+                                <th>Mgmt<br>(Latest)</th>
+                                <th id="annualizedHeader">Annualized<br>(If Enabled)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionABody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+
+                    <div class="annualize-inputs" id="annualizeInputs">
+                        <div class="annualize-input-group">
+                            <label>Months Covered</label>
+                            <input type="number" id="annualizeMonths" value="6" min="1" max="12" onchange="recalculateAll()">
+                        </div>
+                        <div class="annualize-input-group">
+                            <label id="multiplierDisplay">Multiplier: 2.00x</label>
+                            <div style="font-size: 0.8rem; color: var(--text-light);">Mgmt × (12/months)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Projection Inputs -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(16,185,129,0.1); color: var(--secondary);">
+                            ✏️
+                        </div>
+                        Section B: Projection Inputs (Editable)
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="preset-buttons">
+                        <button class="btn-preset" onclick="applyPreset('conservative')">Conservative</button>
+                        <button class="btn-preset active" onclick="applyPreset('base')">Base Case</button>
+                        <button class="btn-preset" onclick="applyPreset('aggressive')">Aggressive</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Input Parameters</th>
+                                <th>P1<br>(Year 1)</th>
+                                <th>P2<br>(Year 2)</th>
+                                <th>P3<br>(Year 3)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Sales Growth (%)</td>
+                                <td><input id="sg_p1" value="15"></td>
+                                <td><input id="sg_p2" value="10"></td>
+                                <td><input id="sg_p3" value="8"></td>
+                            </tr>
+                            <tr>
+                                <td>EBITDA Margin (%)</td>
+                                <td><input id="em_p1" value="12"></td>
+                                <td><input id="em_p2" value="12"></td>
+                                <td><input id="em_p3" value="12"></td>
+                            </tr>
+                            <tr>
+                                <td>Cost of Sales (%)</td>
+                                <td><input id="cos_p1" value="62"></td>
+                                <td><input id="cos_p2" value="62"></td>
+                                <td><input id="cos_p3" value="62"></td>
+                            </tr>
+                            <tr>
+                                <td>Operating Expenses (%)</td>
+                                <td><input id="opex_p1" value="22"></td>
+                                <td><input id="opex_p2" value="22"></td>
+                                <td><input id="opex_p3" value="22"></td>
+                            </tr>
+                            <tr>
+                                <td>Debtors Days</td>
+                                <td><input id="deb_p1" value="60"></td>
+                                <td><input id="deb_p2" value="60"></td>
+                                <td><input id="deb_p3" value="60"></td>
+                            </tr>
+                            <tr>
+                                <td>Stock Days</td>
+                                <td><input id="stk_p1" value="30"></td>
+                                <td><input id="stk_p2" value="30"></td>
+                                <td><input id="stk_p3" value="30"></td>
+                            </tr>
+                            <tr>
+                                <td>Creditors Days</td>
+                                <td><input id="cred_p1" value="45"></td>
+                                <td><input id="cred_p2" value="45"></td>
+                                <td><input id="cred_p3" value="45"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card: Projection Output -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(245,158,11,0.1); color: var(--warning);">
+                            📈
+                        </div>
+                        Section C: Projected Financials (Calculated)
+                    </div>
+                    <div id="baseYearLabel" style="font-size:0.9rem; color: var(--text-light); font-weight:600;">
+                        Base Year: FY 2024 (Audited)
+                    </div>
+                </div>
+                <div class="card-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameters</th>
+                                <th id="baseColHeader">FY 2024</th>
+                                <th>P1</th>
+                                <th>P2</th>
+                                <th>P3</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionCBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            
+            <!-- Card: Working Capital Requirement -->
+            <div class="card" id="sectionDCard">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(99,102,241,0.1); color: var(--primary-light);">
+                            💧
+                        </div>
+                        Section D: Working Capital Requirement (Derived)
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div style="font-size:0.9rem; color: var(--text-light); font-weight:600; margin-bottom:10px;">
+                        Based on Debtors / Stock / Creditors Days from Section B and projected Revenue/COGS from Section C.
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameters</th>
+                                <th>Base</th>
+                                <th>P1</th>
+                                <th>P2</th>
+                                <th>P3</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionDBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+            <!-- Card: Existing Commitments -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(239,68,68,0.1); color: var(--danger);">
+                            🏦
+                        </div>
+                        Section E: Existing Commitments (Editable)
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h3 class="section-title" style="margin-bottom: 10px;">Company Facilities</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Facility Type</th>
+                                <th>Bank</th>
+                                <th class="number">Limit</th>
+                                <th class="number">Outstanding</th>
+                                <th class="number">Monthly Instalment</th>
+                                <th class="number">Annual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companyFacilitiesBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+
+                    <div style="height: 20px;"></div>
+
+                    <h3 class="section-title" style="margin-bottom: 10px;">Directors' Facilities</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Facility Type</th>
+                                <th>Bank</th>
+                                <th class="number">Limit</th>
+                                <th class="number">Outstanding</th>
+                                <th class="number">Monthly Instalment</th>
+                                <th class="number">Annual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directorFacilitiesBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: var(--text-light);">
+                        <em>Note: Directors' personal facilities are excluded from DSCR calculation.</em>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Proposed Facilities -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(79,70,229,0.1); color: var(--primary);">
+                            ➕
+                        </div>
+                        Section F: New / Proposed Facilities (Simulation)
+                    </div>
+                </div>
+                <div class="card-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Facility Type</th>
+                                <th class="number">Loan Amount</th>
+                                <th class="number">Tenure (Years)</th>
+                                <th class="number">Interest Rate (%)</th>
+                                <th class="number">Monthly Instalment</th>
+                                <th class="number">Annual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newFacilitiesBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card: Debt Service Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(16,185,129,0.1); color: var(--secondary);">
+                            🧾
+                        </div>
+                        Section G: Debt Service Summary
+                    </div>
+                </div>
+                <div class="card-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="number">Monthly</th>
+                                <th class="number">Annual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionGBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card: DSCR Analysis -->
+            <div class="card dscr-card" id="dscrCard">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon" style="background: rgba(245,158,11,0.1); color: var(--warning);">
+                            🎯
+                        </div>
+                        Section H: DSCR ANALYSIS (Bank Criteria)
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span class="badge badge-marginal" id="overallStatus">-</span>
+                        <button class="btn btn-secondary" style="padding:6px 12px;" onclick="copySummary()">Copy</button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="gauge-container">
+                        <div>
+                            <div class="gauge">
+                                <div class="gauge-bg"></div>
+                                <div class="gauge-mask"></div>
+                                <div class="gauge-needle" id="gaugeNeedle"></div>
+                                <div class="gauge-center"></div>
+                            </div>
+                            <div class="gauge-value" id="gaugeValue">0.00x</div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Bank</th>
+                                <th class="number">Min DSCR</th>
+                                <th>Model</th>
+                                <th class="number">Audited DSCR</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionHBody">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+</div>
+
+        <div class="footer">
+            Generated on <span id="footerDate"></span> | MyTutor DSCR Dashboard
+        </div>
+    </div>
+
+    
+    <script>
+        // ============================
+        // DATA (extracted from audits / excel)
+        // ============================
+
+        const auditedYearsDetected = [2023, 2024];
+
+        const historicalData = {
+  "fy2023": {
+    "revenue": 9373866.0,
+    "cogs": 3236775.0,
+    "otherIncome": 163617.0,
+    "opexAdmin": 2156411.0,
+    "opexOther": 3635023.0,
+    "opex": 5791434.0,
+    "financeCosts": 161562.0,
+    "depreciation": 337785.0,
+    "tax": 195531.0,
+    "netProfit": 152181.0,
+    "ebitda": 847059.0
+  },
+  "fy2024": {
+    "revenue": 10094585.0,
+    "cogs": 3887215.0,
+    "otherIncome": 40395.0,
+    "opexAdmin": 2214297.0,
+    "opexOther": 3532906.0,
+    "opex": 5747203.0,
+    "financeCosts": 226238.0,
+    "depreciation": 346922.0,
+    "tax": 105117.0,
+    "netProfit": 169207.0,
+    "ebitda": 847484.0
+  },
+  "mgmt": {
+    "revenue": 0,
+    "cogs": 0,
+    "otherIncome": 0,
+    "opex": 0,
+    "opexAdmin": 0,
+    "opexOther": 0,
+    "financeCosts": 0,
+    "depreciation": 0,
+    "tax": 0,
+    "netProfit": 0,
+    "ebitda": 0,
+    "monthsCovered": 0
+  }
+};
+
+        const bankRules = {
+  "RHB (SME)": {
+    "allowFinancial": true,
+    "allowNonFinancial": true,
+    "minFinancial": 1.25,
+    "minNonFinancial": 1.25
+  },
+  "Maybank": {
+    "allowFinancial": true,
+    "allowNonFinancial": true,
+    "minFinancial": 1.0,
+    "minNonFinancial": 1.0,
+    "turnoverMultiplier": 1.2
+  },
+  "CIMB Bank": {
+    "allowFinancial": true,
+    "allowNonFinancial": true,
+    "minFinancial": 1.0,
+    "minNonFinancial": 1.5,
+    "adjustment": "excludeOtherIncome"
+  },
+  "Standard Chartered": {
+    "allowFinancial": false,
+    "allowNonFinancial": true,
+    "minNonFinancial": 1.0
+  },
+  "SME Bank": {
+    "allowFinancial": true,
+    "allowNonFinancial": false,
+    "minFinancial": 1.25
+  }
+};
+
+        const companyFacilities = [
+  {
+    "type": "Borrowings (Total) - proxy instalment (due<12m/12)",
+    "bank": "",
+    "limit": 0,
+    "outstanding": 4960777.0,
+    "monthly": 78206.33333333333
+  },
+  {
+    "type": "Term Loan (First)",
+    "bank": "",
+    "limit": 0,
+    "outstanding": 152796.0,
+    "monthly": 6054.633333333333
+  },
+  {
+    "type": "Term Loan (Second)",
+    "bank": "",
+    "limit": 0,
+    "outstanding": 119864.0,
+    "monthly": 0
+  },
+  {
+    "type": "Term Loan (Third)",
+    "bank": "",
+    "limit": 0,
+    "outstanding": 35038.0,
+    "monthly": 0
+  }
+];
+
+        const directorFacilities = [];
+
+        // ============================
+        // HELPERS
+        // ============================
+        function escapeHtml(str){
+            return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        function fmtRM(x) {
+            const n = Number(x || 0);
+            return 'RM ' + Math.round(n).toLocaleString();
+        }
+        function fmtNum(x) {
+            const n = Number(x || 0);
+            return Math.round(n).toLocaleString();
+        }
+        function fmtX(x) {
+            const n = Number(x || 0);
+            if (!isFinite(n) || n === 0) return '0.00x';
+            return n.toFixed(2) + 'x';
+        }
+        function safe(v){ return (v===undefined || v===null || !isFinite(Number(v))) ? 0 : Number(v); }
+
+        function latestAuditedKey(){
+            const years = (auditedYearsDetected||[]).slice().sort((a,b)=>a-b);
+            if(!years.length) return null;
+            const y = years[years.length-1];
+            return 'fy'+y;
+        }
+
+        // ============================
+        // SECTION A
+        // ============================
+        let annualizeEnabled = false;
+
+        function buildSectionA() {
+            const body = document.getElementById('sectionABody');
+            if (!body) return;
+
+            const years = (auditedYearsDetected||[]).slice().sort((a,b)=>a-b);
+            const y1 = years.length >= 2 ? years[years.length-2] : (years[0] || 0);
+            const y2 = years.length >= 1 ? years[years.length-1] : 0;
+
+            const ths = document.querySelectorAll('thead th.base-col');
+            if (ths.length >= 2) {
+                ths[0].innerHTML = y1 ? `FY ${y1}<br>(Audited)` : `FY -<br>(Audited)`;
+                ths[1].innerHTML = y2 ? `FY ${y2}<br>(Audited)` : `FY -<br>(Audited)`;
+            }
+
+            const a = historicalData['fy'+y1] || {};
+            const b = historicalData['fy'+y2] || {};
+            const m = historicalData.mgmt || historicalData.jun2025 || {};
+
+            const rows = [
+                { key:'revenue', label:'Revenue' },
+                { key:'cogs', label:'Cost of Sales (COGS)' },
+                { key:'otherIncome', label:'Other Operating Income' },
+                { key:'opexAdmin', label:'Operating Expenses - Administrative' },
+                { key:'opexOther', label:'Operating Expenses - Other' },
+                { key:'opex', label:'Operating Expenses (Total)' },
+                { key:'financeCosts', label:'Finance Costs' },
+                { key:'depreciation', label:'Depreciation' },
+                { key:'tax', label:'Tax' },
+                { key:'netProfit', label:'Net Profit (PAT)' },
+                { key:'ebitda', label:'EBITDA (Derived)' },
+            ];
+
+            body.innerHTML = rows.map(r => `
+                <tr>
+                    <td>${r.label}</td>
+                    <td class="number">${fmtRM(a[r.key])}</td>
+                    <td class="number">${fmtRM(b[r.key])}</td>
+                    <td class="number">${fmtRM(m[r.key])}</td>
+                    <td class="number" id="annualized_${r.key}">${fmtRM(0)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleAnnualize() {
+            annualizeEnabled = !annualizeEnabled;
+            const t = document.getElementById('annualizeToggle');
+            const inputs = document.getElementById('annualizeInputs');
+            if (t) t.classList.toggle('active', annualizeEnabled);
+            if (inputs) inputs.style.display = annualizeEnabled ? 'flex' : 'none';
+            recalculateAll();
+        }
+
+        function getMgmtAnnualized() {
+            const m = historicalData.mgmt || historicalData.jun2025 || {};
+            const months = Number(document.getElementById('annualizeMonths')?.value || m.monthsCovered || 0);
+            const mult = (months > 0) ? (12 / months) : 0;
+            const out = {};
+            ['revenue','cogs','otherIncome','opex','opexAdmin','opexOther','financeCosts','depreciation','tax','netProfit','ebitda'].forEach(k => {
+                out[k] = (safe(m[k]) * mult);
+            });
+            return { months, mult, out };
+        }
+
+        function updateAnnualizedColumn() {
+            const { months, mult, out } = getMgmtAnnualized();
+            const multEl = document.getElementById('multiplierDisplay');
+            if (multEl) multEl.textContent = `Multiplier: ${mult ? mult.toFixed(2) : '0.00'}x`;
+            const ah = document.getElementById('annualizedHeader');
+            if (ah) ah.innerHTML = annualizeEnabled ? `Annualized<br>(${months} month(s))` : `Annualized<br>(If Enabled)`;
+
+            const keys = ['revenue','cogs','otherIncome','opexAdmin','opexOther','opex','financeCosts','depreciation','tax','netProfit','ebitda'];
+            keys.forEach(k => {
+                const el = document.getElementById(`annualized_${k}`);
+                if (el) el.textContent = fmtRM(annualizeEnabled ? out[k] : 0);
+            });
+        }
+
+        // ============================
+        // SECTION B/C PROJECTION
+        // ============================
+        function getInputs() {
+            const g = (id) => Number(document.getElementById(id)?.value || 0);
+            return {
+                sg: [g('sg_p1'), g('sg_p2'), g('sg_p3')].map(x => x/100),
+                em: [g('em_p1'), g('em_p2'), g('em_p3')].map(x => x/100),
+                cos: [g('cos_p1'), g('cos_p2'), g('cos_p3')].map(x => x/100),
+                opex: [g('opex_p1'), g('opex_p2'), g('opex_p3')].map(x => x/100),
+                deb: [g('deb_p1'), g('deb_p2'), g('deb_p3')],
+                stk: [g('stk_p1'), g('stk_p2'), g('stk_p3')],
+                cred:[g('cred_p1'), g('cred_p2'), g('cred_p3')],
+            };
+        }
+
+        function getBase() {
+            const k = latestAuditedKey();
+            return historicalData[k] || historicalData.fy2024 || historicalData.fy2023 || {};
+        }
+
+        function projectFinancials() {
+            const base = getBase();
+            const inp = getInputs();
+
+            const baseRev = safe(base.revenue);
+            const fcRatio = baseRev ? (safe(base.financeCosts)/baseRev) : 0;
+            const depRatio = baseRev ? (safe(base.depreciation)/baseRev) : 0;
+            const taxRatio = baseRev ? (safe(base.tax)/baseRev) : 0;
+            const otherIncRatio = baseRev ? (safe(base.otherIncome)/baseRev) : 0;
+
+            let rev = baseRev;
+            const proj = [];
+            for (let i=0;i<3;i++) {
+                rev = rev * (1 + inp.sg[i]);
+                const cogs = rev * inp.cos[i];
+                const opex = rev * inp.opex[i];
+                const ebitda = rev * inp.em[i];
+
+                const financeCosts = rev * fcRatio;
+                const depreciation = rev * depRatio;
+                const otherIncome = rev * otherIncRatio;
+                const pbt = ebitda - depreciation - financeCosts;
+
+                const taxUsed = rev * taxRatio;
+                const netProfit = pbt - taxUsed;
+
+                proj.push({
+                    revenue: rev,
+                    cogs,
+                    grossProfit: rev - cogs,
+                    opex,
+                    otherIncome,
+                    ebitda,
+                    financeCosts,
+                    depreciation,
+                    pbt,
+                    tax: taxUsed,
+                    netProfit
+                });
+            }
+            return { base, proj, inp };
+        }
+
+        function buildSectionC() {
+            const { base, proj } = projectFinancials();
+
+            const rows = [
+                { key:'revenue', label:'Revenue' },
+                { key:'cogs', label:'Cost of Sales (COGS)' },
+                { key:'grossProfit', label:'Gross Profit' },
+                { key:'opex', label:'Operating Expenses (Total)' },
+                { key:'otherIncome', label:'Other Operating Income' },
+                { key:'ebitda', label:'EBITDA' },
+                { key:'depreciation', label:'Depreciation' },
+                { key:'financeCosts', label:'Finance Costs' },
+                { key:'pbt', label:'Profit Before Tax (Derived)' },
+                { key:'tax', label:'Tax' },
+                { key:'netProfit', label:'Net Profit (Derived)' },
+            ];
+
+            const body = document.getElementById('sectionCBody');
+            if (!body) return;
+
+            body.innerHTML = rows.map(r => {
+                const baseVal = (r.key in base) ? base[r.key] : (
+                    r.key==='grossProfit' ? (safe(base.revenue)-safe(base.cogs)) :
+                    r.key==='pbt' ? (safe(base.ebitda)-safe(base.depreciation)-safe(base.financeCosts)) :
+                    0
+                );
+                return `
+                    <tr${r.key==='ebitda' ? ' class="highlight-row"' : ''}>
+                        <td>${r.label}</td>
+                        <td class="number">${fmtRM(baseVal)}</td>
+                        <td class="number">${fmtRM(proj[0][r.key])}</td>
+                        <td class="number">${fmtRM(proj[1][r.key])}</td>
+                        <td class="number">${fmtRM(proj[2][r.key])}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ============================
+        // SECTION D WCR
+        // ============================
+        function buildSectionD() {
+            const card = document.getElementById('sectionDCard');
+            if (!card) return;
+
+            const { base, proj, inp } = projectFinancials();
+            const calc = (rev,cogs,deb,stk,cred) => {
+                const ar=(rev/365)*deb;
+                const inv=(cogs/365)*stk;
+                const ap=(cogs/365)*cred;
+                const wcr=ar+inv-ap;
+                return {ar,inv,ap,wcr};
+            };
+
+            const baseCalc = calc(safe(base.revenue), safe(base.cogs), inp.deb[0], inp.stk[0], inp.cred[0]);
+            const p1 = calc(safe(proj[0].revenue), safe(proj[0].cogs), inp.deb[0], inp.stk[0], inp.cred[0]);
+            const p2 = calc(safe(proj[1].revenue), safe(proj[1].cogs), inp.deb[1], inp.stk[1], inp.cred[1]);
+            const p3 = calc(safe(proj[2].revenue), safe(proj[2].cogs), inp.deb[2], inp.stk[2], inp.cred[2]);
+
+            const body = document.getElementById('sectionDBody');
+            if (!body) return;
+
+            const row = (label, k, highlight=false) => `
+                <tr${highlight ? ' class="highlight-row"' : ''}>
+                    <td>${label}</td>
+                    <td class="number">${fmtRM(baseCalc[k])}</td>
+                    <td class="number">${fmtRM(p1[k])}</td>
+                    <td class="number">${fmtRM(p2[k])}</td>
+                    <td class="number">${fmtRM(p3[k])}</td>
+                </tr>
+            `;
+
+            body.innerHTML = [
+                row('Trade Receivables (Debtors)', 'ar'),
+                row('Inventories (Stock)', 'inv'),
+                row('Trade Payables (Creditors)', 'ap'),
+                row('Working Capital Requirement (AR + Inv - AP)', 'wcr', true),
+            ].join('');
+        }
+
+        // ============================
+        // SECTION E/F/G FACILITIES
+        // ============================
+        function renderExistingFacilities() {
+            const body = document.getElementById('companyFacilitiesBody');
+            if (!body) return;
+
+            // If audit extraction produced rows, use them; otherwise provide 5 blank rows.
+            const rows = (Array.isArray(companyFacilities) && companyFacilities.length)
+                ? companyFacilities
+                : Array.from({length: 5}, () => ({type:'', bank:'', limit:0, outstanding:0, monthly:0}));
+
+            body.innerHTML = rows.map((r,i)=>`
+                <tr>
+                    <td>${i+1}</td>
+                    <td><input type="text" id="ex_type_${i}" value="${escapeHtml(r.type||'')}" style="text-align:left"></td>
+                    <td><input type="text" id="ex_bank_${i}" value="${escapeHtml(r.bank||'')}" style="text-align:left"></td>
+                    <td class="number"><input type="number" id="ex_limit_${i}" value="${safe(r.limit)}" step="1" onchange="recalculateAll()"></td>
+                    <td class="number"><input type="number" id="ex_out_${i}" value="${safe(r.outstanding)}" step="1" onchange="recalculateAll()"></td>
+                    <td class="number"><input type="number" id="ex_m_${i}" value="${safe(r.monthly)}" step="1" onchange="recalculateAll()"></td>
+                    <td class="number" id="ex_a_${i}">0</td>
+                </tr>
+            `).join('');
+
+            const dbody = document.getElementById('directorFacilitiesBody');
+            if (dbody) {
+                dbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">(No director facilities included)</td></tr>`;
+            }
+        }
+
+        let proposedRows = 3;
+        function renderProposedFacilities() {
+            const body = document.getElementById('newFacilitiesBody');
+            if (!body) return;
+
+            body.innerHTML = '';
+            for (let i=0;i<proposedRows;i++) {
+                body.innerHTML += `
+                    <tr>
+                        <td><input type="text" id="nf_type_${i}" value="" style="text-align:left" placeholder="Overdraft / Term Loan / HP"></td>
+                        <td class="number"><input type="number" id="nf_l_${i}" value="0" step="1" onchange="recalculateAll()"></td>
+                        <td class="number"><input type="number" id="nf_t_${i}" value="5" step="1" onchange="recalculateAll()"></td>
+                        <td class="number"><input type="number" id="nf_r_${i}" value="9" step="0.1" onchange="recalculateAll()"></td>
+                        <td class="number" id="nf_m_${i}">0</td>
+                        <td class="number" id="nf_a_${i}">0</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function addProposedRow(){
+            proposedRows += 1;
+            renderProposedFacilities();
+            recalculateAll();
+        }
+
+        function calcDebtServiceAnnual() {
+            let currAnnual = 0;
+            const exRows = document.querySelectorAll('[id^="ex_m_"]').length || 0;
+            for (let i=0;i<exRows;i++) {
+                const m = Number(document.getElementById(`ex_m_${i}`)?.value || 0);
+                const a = m * 12;
+                currAnnual += a;
+                const aEl = document.getElementById(`ex_a_${i}`);
+                if (aEl) aEl.textContent = fmtNum(a);
+            }
+
+            let newAnnual = 0;
+            for (let i=0;i<proposedRows;i++) {
+                const l = Number(document.getElementById(`nf_l_${i}`)?.value || 0);
+                const t = Math.max(1, Number(document.getElementById(`nf_t_${i}`)?.value || 1));
+                const r = Number(document.getElementById(`nf_r_${i}`)?.value || 0);
+
+                let annual = 0;
+                if (l > 0) {
+                    const rate = (r/100)/12;
+                    const n = t*12;
+                    if (rate === 0) {
+                        annual = (l/t);
+                    } else {
+                        const pmt = (l * (rate * Math.pow(1+rate, n)) / (Math.pow(1+rate, n)-1));
+                        annual = pmt * 12;
+                    }
+                }
+                newAnnual += annual;
+
+                const mEl = document.getElementById(`nf_m_${i}`);
+                const aEl = document.getElementById(`nf_a_${i}`);
+                if (mEl) mEl.textContent = fmtNum(annual/12);
+                if (aEl) aEl.textContent = fmtNum(annual);
+            }
+
+            return { currAnnual, newAnnual, totalAnnual: currAnnual + newAnnual };
+        }
+
+        function buildSectionG() {
+            const { currAnnual, newAnnual, totalAnnual } = calcDebtServiceAnnual();
+            const body = document.getElementById('sectionGBody');
+            if (!body) return;
+            body.innerHTML = `
+                <tr><td>Existing Commitments</td><td class="number">${fmtRM(currAnnual/12)}</td><td class="number">${fmtRM(currAnnual)}</td></tr>
+                <tr><td>New / Proposed Commitments</td><td class="number">${fmtRM(newAnnual/12)}</td><td class="number">${fmtRM(newAnnual)}</td></tr>
+                <tr class="total-row"><td>Total Debt Service</td><td class="number">${fmtRM(totalAnnual/12)}</td><td class="number">${fmtRM(totalAnnual)}</td></tr>
+            `;
+        }
+
+        // ============================
+        // SECTION H BANK DSCR
+        // ============================
+        function ensureBankDropdown() {
+            const header = document.querySelector('#dscrCard .card-header');
+            if (!header || document.getElementById('bankSelect')) return;
+
+            const controls = document.createElement('div');
+            controls.style.display = 'flex';
+            controls.style.gap = '10px';
+            controls.style.alignItems = 'center';
+
+            const bankSelect = document.createElement('select');
+            bankSelect.id = 'bankSelect';
+            bankSelect.style.width = '220px';
+            const banks = Object.keys(bankRules).sort();
+            bankSelect.innerHTML = banks.map(b=>`<option value="${b}">${b}</option>`).join('');
+            bankSelect.onchange = () => { updateModelOptions(); recalculateAll(); };
+
+            const modelSelect = document.createElement('select');
+            modelSelect.id = 'modelSelect';
+            modelSelect.style.width = '190px';
+            modelSelect.onchange = () => recalculateAll();
+
+            const incomeFactor = document.createElement('input');
+            incomeFactor.id = 'incomeFactor';
+            incomeFactor.type = 'number';
+            incomeFactor.step = '0.1';
+            incomeFactor.value = '10';
+            incomeFactor.style.width = '90px';
+            incomeFactor.onchange = () => recalculateAll();
+
+            const lbl = document.createElement('span');
+            lbl.style.fontSize = '12px';
+            lbl.style.color = 'rgba(15,23,42,0.8)';
+            lbl.textContent = 'Income Factor %';
+
+            controls.appendChild(bankSelect);
+            controls.appendChild(modelSelect);
+            controls.appendChild(incomeFactor);
+            controls.appendChild(lbl);
+
+            header.appendChild(controls);
+            updateModelOptions();
+        }
+
+        function updateModelOptions() {
+            const bank = document.getElementById('bankSelect')?.value;
+            const rule = bankRules[bank] || {};
+            const modelSelect = document.getElementById('modelSelect');
+            if (!modelSelect) return;
+            const opts = [];
+            if (rule.allowFinancial) opts.push({v:'financial', t:'Financial Model'});
+            if (rule.allowNonFinancial) opts.push({v:'nonfinancial', t:'Non-Financial Model'});
+            modelSelect.innerHTML = opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('');
+            if (!opts.length) modelSelect.innerHTML = `<option value="financial">Financial Model</option>`;
+        }
+
+        function bankReq(bank, model){
+            const r = bankRules[bank] || {};
+            if (model==='nonfinancial' && r.minNonFinancial) return r.minNonFinancial;
+            if (model==='financial' && r.minFinancial) return r.minFinancial;
+            return r.minFinancial || 1.25;
+        }
+
+        function buildSectionH() {
+            const bank = document.getElementById('bankSelect')?.value || Object.keys(bankRules)[0];
+            const model = document.getElementById('modelSelect')?.value || 'financial';
+
+            const base = getBase();
+            const { totalAnnual } = calcDebtServiceAnnual();
+            const denom = totalAnnual || 1;
+
+            const incomeF = Number(document.getElementById('incomeFactor')?.value || 0) / 100;
+
+            let numerator = 0;
+            let formulaLabel = '';
+            const r = bankRules[bank] || {};
+
+            if (model === 'financial') {
+                numerator = safe(base.ebitda);
+                if (r.adjustment === 'excludeOtherIncome') {
+                    numerator = Math.max(0, safe(base.ebitda) - safe(base.otherIncome));
+                    formulaLabel = 'EBITDA (excl. Other Income) / Debt Service';
+                } else {
+                    formulaLabel = 'EBITDA / Debt Service';
+                }
+            } else {
+                let turnover = safe(base.revenue);
+                if (r.turnoverMultiplier) turnover = turnover * r.turnoverMultiplier;
+                numerator = turnover * incomeF;
+                formulaLabel = 'Turnover × Income Factor / Debt Service';
+            }
+
+            const dscr = numerator / denom;
+            const req = bankReq(bank, model);
+            const modelLabel = (model === 'financial') ? 'Financial' : 'Non-Financial';
+
+            const status = (dscr >= req) ? {txt:'PASS', cls:'badge-strong'} :
+                           (dscr >= Math.max(1.0, req-0.15)) ? {txt:'MARGINAL', cls:'badge-marginal'} :
+                           {txt:'FAIL', cls:'badge-fail'};
+
+            const body = document.getElementById('sectionHBody');
+            if (body) {
+                body.innerHTML = `
+                    <tr>
+                        <td>${bank}<br><span style="font-size:11px; color:#64748b;">${formulaLabel}</span></td>
+                        <td class="number">${req.toFixed(2)}x</td>
+                        <td>${modelLabel}</td>
+                        <td class="number" style="font-weight:800;">${fmtX(dscr)}</td>
+                        <td><span class="badge ${status.cls}">${status.txt}</span></td>
+                    </tr>
+                `;
+            }
+
+            document.getElementById('sumDscr').textContent = fmtX(dscr);
+            document.getElementById('sumDebtService').textContent = fmtRM(totalAnnual);
+            document.getElementById('sumEbitda').textContent = fmtRM(safe(base.ebitda));
+            document.getElementById('sumStatus').textContent = status.txt;
+
+            const needle = document.getElementById('gaugeNeedle');
+            if (needle) {
+                const clamped = Math.max(0.5, Math.min(2.0, dscr));
+                const deg = -90 + ((clamped - 0.5) / 1.5) * 180;
+                needle.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            }
+            const gv = document.getElementById('gaugeValue');
+            if (gv) gv.textContent = fmtX(dscr);
+
+            const statusEl = document.getElementById('overallStatus');
+            if (statusEl) {
+                statusEl.textContent = `${bank}: ${status.txt}`;
+                statusEl.className = 'badge ' + status.cls;
+            }
+        }
+
+        
+        // ============================
+        // SCENARIO PRESETS (Section B)
+        // ============================
+        const scenarioPresets = {
+            conservative: {
+                sg: [8, 6, 5],      // Sales Growth %
+                em: [10, 10, 10],   // EBITDA Margin %
+                cos: [64, 64, 64],  // Cost of Sales %
+                opex: [24, 24, 24], // Opex %
+                deb: [75, 75, 75],  // Debtors Days
+                stk: [35, 35, 35],  // Stock Days
+                cred:[45, 45, 45]   // Creditors Days
+            },
+            base: {
+                sg: [15, 10, 8],
+                em: [12, 12, 12],
+                cos: [62, 62, 62],
+                opex: [22, 22, 22],
+                deb: [60, 60, 60],
+                stk: [30, 30, 30],
+                cred:[45, 45, 45]
+            },
+            aggressive: {
+                sg: [25, 18, 12],
+                em: [15, 15, 15],
+                cos: [60, 60, 60],
+                opex: [20, 20, 20],
+                deb: [45, 45, 45],
+                stk: [25, 25, 25],
+                cred:[60, 60, 60]
+            }
+        };
+
+        function setPresetButtonActive(presetKey){
+            const buttons = Array.from(document.querySelectorAll('.preset-buttons .btn-preset'));
+            buttons.forEach(btn => {
+                const txt = (btn.textContent || '').toLowerCase();
+                const isActive =
+                    (presetKey === 'conservative' && txt.includes('conservative')) ||
+                    (presetKey === 'base' && (txt.includes('base') || txt.includes('base case'))) ||
+                    (presetKey === 'aggressive' && txt.includes('aggressive'));
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        function applyPreset(presetKey){
+            const p = scenarioPresets[presetKey];
+            if(!p) return;
+
+            // Sales growth
+            document.getElementById('sg_p1').value = p.sg[0];
+            document.getElementById('sg_p2').value = p.sg[1];
+            document.getElementById('sg_p3').value = p.sg[2];
+
+            // EBITDA margin
+            document.getElementById('em_p1').value = p.em[0];
+            document.getElementById('em_p2').value = p.em[1];
+            document.getElementById('em_p3').value = p.em[2];
+
+            // COS
+            document.getElementById('cos_p1').value = p.cos[0];
+            document.getElementById('cos_p2').value = p.cos[1];
+            document.getElementById('cos_p3').value = p.cos[2];
+
+            // Opex
+            document.getElementById('opex_p1').value = p.opex[0];
+            document.getElementById('opex_p2').value = p.opex[1];
+            document.getElementById('opex_p3').value = p.opex[2];
+
+            // Working capital days
+            document.getElementById('deb_p1').value = p.deb[0];
+            document.getElementById('deb_p2').value = p.deb[1];
+            document.getElementById('deb_p3').value = p.deb[2];
+
+            document.getElementById('stk_p1').value = p.stk[0];
+            document.getElementById('stk_p2').value = p.stk[1];
+            document.getElementById('stk_p3').value = p.stk[2];
+
+            document.getElementById('cred_p1').value = p.cred[0];
+            document.getElementById('cred_p2').value = p.cred[1];
+            document.getElementById('cred_p3').value = p.cred[2];
+
+            setPresetButtonActive(presetKey);
+            // Persist preset selection for reloads
+            try {
+                const s = snapshotState();
+                s.meta = s.meta || {};
+                s.meta.selectedPreset = presetKey;
+                localStorage.setItem('dscr_dashboard_state', JSON.stringify(s));
+            } catch(e){}
+            recalculateAll();
+        }
+
+// ============================
+        // SAVE / LOAD (localStorage) + download HTML
+        // ============================
+        function snapshotState(){
+            const state = { inputs:{}, selects:{}, meta:{ savedAt: new Date().toISOString() }, proposedRows };
+            document.querySelectorAll('input').forEach(i=>{ if(i.id) state.inputs[i.id]=i.value; });
+            document.querySelectorAll('select').forEach(s=>{ if(s.id) state.selects[s.id]=s.value; });
+            return state;
+        }
+        function restoreState(state){
+            if(!state) return;
+            proposedRows = state.proposedRows || proposedRows;
+            renderProposedFacilities();
+            Object.entries(state.inputs||{}).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
+            Object.entries(state.selects||{}).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
+        }
+        function saveDraft(){ localStorage.setItem('dscr_dashboard_state', JSON.stringify(snapshotState())); }
+        function loadDraft(){
+            const raw = localStorage.getItem('dscr_dashboard_state');
+            if(!raw) return;
+            try { restoreState(JSON.parse(raw)); } catch(e){}
+        }
+
+        function saveHTML() {
+            document.querySelectorAll('input').forEach(i => { i.setAttribute('value', i.value); });
+            document.querySelectorAll('select').forEach(s => {
+                Array.from(s.options).forEach(o => o.removeAttribute('selected'));
+                if (s.selectedIndex >= 0) s.options[s.selectedIndex].setAttribute('selected', 'selected');
+            });
+            const html = document.documentElement.outerHTML;
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'DSCR_Dashboard_Saved.html';
+            a.click();
+        }
+
+        function recalculateAll() {
+            updateAnnualizedColumn();
+            buildSectionC();
+            buildSectionD();
+            buildSectionG();
+            buildSectionH();
+            saveDraft();
+        }
+
+        function resetAll() {
+            localStorage.removeItem('dscr_dashboard_state');
+            location.reload();
+        }
+
+        function copySummary() {
+            const bank = document.getElementById('bankSelect')?.value || '';
+            const dscr = document.getElementById('sumDscr')?.textContent || '';
+            const ebitda = document.getElementById('sumEbitda')?.textContent || '';
+            const debt = document.getElementById('sumDebtService')?.textContent || '';
+            const text = `Bank: ${bank}
+DSCR (Latest Audited): ${dscr}
+EBITDA (Latest Audited): ${ebitda}
+Total Debt Service: ${debt}`;
+            navigator.clipboard.writeText(text);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('footerDate').textContent = new Date().toLocaleDateString();
+
+            buildSectionA();
+            renderExistingFacilities();
+            renderProposedFacilities();
+            ensureBankDropdown();
+
+            // Add "+ Add Row" button in Section F header
+            const fCardHeader = Array.from(document.querySelectorAll('.card-header')).find(h => (h.textContent||'').includes('Section F'));
+            if (fCardHeader && !document.getElementById('addProposedBtn')) {
+                const btn = document.createElement('button');
+                btn.id = 'addProposedBtn';
+                btn.className = 'btn btn-secondary';
+                btn.style.padding='6px 12px';
+                btn.textContent = '+ Add Row';
+                btn.onclick = addProposedRow;
+                fCardHeader.appendChild(btn);
+            }
+
+            loadDraft();
+            // Restore preset button highlight (if any); default to base
+            try {
+                const raw = localStorage.getItem('dscr_dashboard_state');
+                const st = raw ? JSON.parse(raw) : null;
+                const preset = st && st.meta && st.meta.selectedPreset ? st.meta.selectedPreset : 'base';
+                setPresetButtonActive(preset);
+            } catch(e) { setPresetButtonActive('base'); }
+            recalculateAll();
+        });
+    </script>
+
+</body>
+</html>
