@@ -1,0 +1,58 @@
+function recalculate() {
+    let currAnnual = 0;
+    // 1. Calculate Existing Debt Service
+    existingCommitments.forEach((l, i) => {
+        const m = parseFloat(document.getElementById(`ex_m_${i}`).value) || 0;
+        const a = m * 12;
+        currAnnual += a;
+        document.getElementById(`ex_a_${i}`).innerText = Math.round(a).toLocaleString();
+    });
+
+    let newAnnual = 0;
+    // 2. Calculate Proposed Debt Service (Simulation)
+    for(let i=0; i<3; i++){
+        const l = parseFloat(document.getElementById(`nf_l_${i}`).value) || 0;
+        const t = parseFloat(document.getElementById(`nf_t_${i}`).value) || 1;
+        const r = parseFloat(document.getElementById(`nf_r_${i}`).value) || 0;
+        let annual = 0;
+        if(l > 0) {
+            const rate = r / 100 / 12;
+            const n = t * 12;
+            annual = (rate === 0) ? (l/t) : (l * (rate * Math.pow(1+rate, n)) / (Math.pow(1+rate, n)-1)) * 12;
+        }
+        newAnnual += annual;
+        document.getElementById(`nf_m_${i}`).innerText = Math.round(annual/12).toLocaleString();
+        document.getElementById(`nf_a_${i}`).innerText = Math.round(annual).toLocaleString();
+    }
+
+    const currDscr = anchorEbitda / currAnnual;
+    const propDscr = anchorEbitda / (currAnnual + newAnnual);
+
+    // 3. Update Summary View
+    document.getElementById('dashCurrentDscr').innerText = currDscr.toFixed(2) + 'x';
+    document.getElementById('dashCurrentDebt').innerText = 'Annual: RM ' + Math.round(currAnnual).toLocaleString();
+    document.getElementById('dashProposedDscr').innerText = propDscr.toFixed(2) + 'x';
+    document.getElementById('dashProposedDebt').innerText = 'Total: RM ' + Math.round(currAnnual + newAnnual).toLocaleString();
+
+    // 4. Update Bank Comparison
+    let bHtml = '';
+    bankThresholds.forEach(b => {
+        const status = (propDscr >= b.req) ? '<span class="badge pass">PASS</span>' : '<span class="badge fail">FAIL</span>';
+        bHtml += `<tr><td>${b.name}</td><td class="number">${b.req.toFixed(2)}x</td>
+            <td class="number">${currDscr.toFixed(2)}x</td>
+            <td class="number" style="font-weight:bold">${propDscr.toFixed(2)}x</td>
+            <td>${status}</td></tr>`;
+    });
+    document.getElementById('bankBody').innerHTML = bHtml;
+}
+
+function saveHTML() {
+    document.querySelectorAll('input').forEach(i => { i.setAttribute('value', i.value); });
+    const html = document.documentElement.outerHTML;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Debt_Capacity_Report_Saved.html';
+    a.click();
+}
