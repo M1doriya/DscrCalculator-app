@@ -1,514 +1,542 @@
-  function escapeHtml(str) {
-    return String(str || "").replace(/[&<>"']/g, function (m) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m];
-    });
-  }
+        function escapeHtml(str){
+            return String(str || "")
+                .replace(/&/g,'&amp;')
+                .replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;')
+                .replace(/'/g,'&#39;');
+        }
 
-  function fmt(n) {
-    if (n === null || n === undefined || n === "") return "-";
-    const num = Number(n);
-    if (Number.isNaN(num)) return "-";
-    return num.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  }
+        function fmt(n){
+            if(n === null || n === undefined || n === "") return "-";
+            const num = Number(n);
+            if(Number.isNaN(num)) return "-";
+            return num.toLocaleString(undefined,{maximumFractionDigits:0});
+        }
 
-  function fmt2(n) {
-    if (n === null || n === undefined || n === "") return "-";
-    const num = Number(n);
-    if (Number.isNaN(num)) return "-";
-    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+        function fmt2(n){
+            if(n === null || n === undefined || n === "") return "-";
+            const num = Number(n);
+            if(Number.isNaN(num)) return "-";
+            return num.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+        }
 
-  function getLatestAuditedYear() {
-    const years = (auditedYearsDetected || []).slice().sort((a, b) => a - b);
-    return years.length ? years[years.length - 1] : null;
-  }
+        function getLatestAuditedYear(){
+            const years = (auditedYearsDetected || []).slice().sort((a,b)=>a-b);
+            return years.length ? years[years.length-1] : null;
+        }
 
-  // -----------------------------
-  // Draft storage
-  // -----------------------------
-  const DRAFT_KEY = "dscr_dashboard_draft_v3";
+        // Draft storage
+        const DRAFT_KEY = "dscr_dashboard_draft_v3";
 
-  function saveDraft() {
-    const draft = {
-      historicalData,
-      companyFacilities,
-      directorFacilities,
-      bankRulesFull,
-      _ts: Date.now()
-    };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }
+        function saveDraft(){
+            const draft = {
+                historicalData,
+                companyFacilities,
+                directorFacilities,
+                bankRulesFull,
+                _ts: Date.now()
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        }
 
-  function loadDraft() {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch (e) { return null; }
-  }
+        function loadDraft(){
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if(!raw) return null;
+            try{ return JSON.parse(raw); }catch(e){ return null; }
+        }
 
-  function resetDraft() {
-    localStorage.removeItem(DRAFT_KEY);
-    location.reload();
-  }
+        function resetDraft(){
+            localStorage.removeItem(DRAFT_KEY);
+            location.reload();
+        }
 
-  // -----------------------------
-  // Scenario presets for Section B
-  // -----------------------------
-  const SCENARIOS = [
-    { id: "base", name: "Base Case", inputs: { salesGrowth: 0.10, ebitdaMargin: 0.10, arDays: 45, apDays: 30, invDays: 30 } },
-    { id: "bull", name: "Bull Case", inputs: { salesGrowth: 0.20, ebitdaMargin: 0.12, arDays: 40, apDays: 35, invDays: 25 } },
-    { id: "bear", name: "Bear Case", inputs: { salesGrowth: 0.05, ebitdaMargin: 0.08, arDays: 55, apDays: 25, invDays: 35 } }
-  ];
+        // Scenario presets for Section B
+        const SCENARIOS = [
+            { id:"base", name:"Base Case", inputs:{ salesGrowth:0.10, ebitdaMargin:0.10, arDays:45, apDays:30, invDays:30 } },
+            { id:"bull", name:"Bull Case", inputs:{ salesGrowth:0.20, ebitdaMargin:0.12, arDays:40, apDays:35, invDays:25 } },
+            { id:"bear", name:"Bear Case", inputs:{ salesGrowth:0.05, ebitdaMargin:0.08, arDays:55, apDays:25, invDays:35 } }
+        ];
 
-  // Section B state (editable inputs)
-  const sectionBState = {
-    projectionSales: 0,
-    salesGrowth: 0.10,
-    ebitdaMargin: 0.10,
-    arDays: 45,
-    apDays: 30,
-    invDays: 30
-  };
-
-  // Proposed facilities (Section F) dynamic table
-  const proposedFacilities = [];
-
-  // -----------------------------
-  // Section Builders
-  // -----------------------------
-  function buildSectionA() {
-    const years = (auditedYearsDetected || []).slice().sort((a, b) => a - b);
-    const container = document.getElementById("sectionA");
-
-    if (!years.length) {
-      container.innerHTML = '<div class="note warn">No audited years detected.</div>';
-      return;
-    }
-
-    const metrics = [
-      ["Revenue", "revenue"],
-      ["COGS", "cogs"],
-      ["Other Income", "otherIncome"],
-      ["Opex (Admin)", "opexAdmin"],
-      ["Opex (Other)", "opexOther"],
-      ["Opex (Total)", "opex"],
-      ["Finance Costs", "financeCosts"],
-      ["Depreciation", "depreciation"],
-      ["Tax", "tax"],
-      ["Net Profit", "netProfit"],
-      ["EBITDA", "ebitda"]
-    ];
-
-    let html = '<table class="table"><thead><tr><th>Item</th>';
-    for (const y of years) html += `<th class="num">FY${y}</th>`;
-    html += "</tr></thead><tbody>";
-
-    for (const [label, key] of metrics) {
-      html += `<tr><td>${escapeHtml(label)}</td>`;
-      for (const y of years) {
-        const row = historicalData[`fy${y}`] || {};
-        html += `<td class="num">${fmt(row[key])}</td>`;
-      }
-      html += "</tr>";
-    }
-
-    html += "</tbody></table>";
-    container.innerHTML = html;
-
-    const latest = getLatestAuditedYear();
-    document.getElementById("latestYear").innerText = latest ? `FY${latest}` : "-";
-
-    // seed Section B projectionSales from latest audited revenue (if empty)
-    if (latest && (!sectionBState.projectionSales || sectionBState.projectionSales <= 0)) {
-      const latestRev = Number((historicalData[`fy${latest}`] || {}).revenue || 0);
-      sectionBState.projectionSales = latestRev;
-    }
-  }
-
-  function buildSectionB() {
-    const container = document.getElementById("sectionB");
-
-    const html = `
-      <div class="two">
-        <div>
-          <div class="sectionTitle">Projection inputs <span class="muted">(editable)</span></div>
-          <table class="table">
-            <tbody>
-              <tr><td>Base sales (RM)</td><td class="num"><input id="b_sales" type="number" value="${sectionBState.projectionSales}"></td></tr>
-              <tr><td>Sales growth</td><td class="num"><input id="b_sg" type="number" step="0.01" value="${sectionBState.salesGrowth}"></td></tr>
-              <tr><td>EBITDA margin</td><td class="num"><input id="b_em" type="number" step="0.01" value="${sectionBState.ebitdaMargin}"></td></tr>
-              <tr><td>AR days</td><td class="num"><input id="b_ar" type="number" value="${sectionBState.arDays}"></td></tr>
-              <tr><td>AP days</td><td class="num"><input id="b_ap" type="number" value="${sectionBState.apDays}"></td></tr>
-              <tr><td>Inventory days</td><td class="num"><input id="b_inv" type="number" value="${sectionBState.invDays}"></td></tr>
-            </tbody>
-          </table>
-          <div class="hint">Changes here will recompute Sections C, D, G and update Section H summary.</div>
-        </div>
-
-        <div>
-          <div class="sectionTitle">Scenario presets</div>
-          <div class="note">Use the controls in the top-right “Controls” card to apply presets.</div>
-          <div class="divider"></div>
-          <div class="note">Presets update the input fields above; they do not hardcode outputs.</div>
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = html;
-
-    // wire listeners
-    const bind = (id, key, cast = Number) => {
-      const el = document.getElementById(id);
-      el.addEventListener("input", () => {
-        sectionBState[key] = cast(el.value);
-        recalculateAll();
-      });
-    };
-
-    bind("b_sales", "projectionSales");
-    bind("b_sg", "salesGrowth");
-    bind("b_em", "ebitdaMargin");
-    bind("b_ar", "arDays");
-    bind("b_ap", "apDays");
-    bind("b_inv", "invDays");
-  }
-
-  function computeProjection() {
-    const sales = Number(sectionBState.projectionSales || 0) * (1 + Number(sectionBState.salesGrowth || 0));
-    const ebitda = sales * Number(sectionBState.ebitdaMargin || 0);
-    return { sales, ebitda };
-  }
-
-  function buildSectionC() {
-    const container = document.getElementById("sectionC");
-    const p = computeProjection();
-    const html = `
-      <table class="table">
-        <thead><tr><th>Item</th><th class="num">Projection</th></tr></thead>
-        <tbody>
-          <tr><td>Projected Sales (RM)</td><td class="num">${fmt(p.sales)}</td></tr>
-          <tr><td>Projected EBITDA (RM)</td><td class="num">${fmt(p.ebitda)}</td></tr>
-        </tbody>
-      </table>
-    `;
-    container.innerHTML = html;
-  }
-
-  function computeWCR() {
-    const p = computeProjection();
-    const sales = p.sales;
-    const ar = (sales / 365) * Number(sectionBState.arDays || 0);
-    const ap = (sales / 365) * Number(sectionBState.apDays || 0);
-    const inv = (sales / 365) * Number(sectionBState.invDays || 0);
-    const wcr = ar + inv - ap;
-    return { ar, ap, inv, wcr, sales };
-  }
-
-  function buildSectionD() {
-    const container = document.getElementById("sectionD");
-    const w = computeWCR();
-    const html = `
-      <table class="table">
-        <thead><tr><th>Component</th><th class="num">Amount (RM)</th></tr></thead>
-        <tbody>
-          <tr><td>Accounts Receivable</td><td class="num">${fmt(w.ar)}</td></tr>
-          <tr><td>Inventory</td><td class="num">${fmt(w.inv)}</td></tr>
-          <tr><td>Accounts Payable</td><td class="num">${fmt(w.ap)}</td></tr>
-          <tr><td><b>WCR</b></td><td class="num"><b>${fmt(w.wcr)}</b></td></tr>
-        </tbody>
-      </table>
-    `;
-    container.innerHTML = html;
-  }
-
-  function buildSectionE() {
-    const container = document.getElementById("sectionE");
-    let html = `
-      <div class="inline">
-        <button id="btnAddExisting" class="smallBtn">Add Existing Commitment</button>
-      </div>
-      <div style="height:10px"></div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Type</th><th>Bank</th>
-            <th class="num">Limit (RM)</th>
-            <th class="num">Outstanding (RM)</th>
-            <th class="num">Monthly (RM)</th>
-            <th class="center">Action</th>
-          </tr>
-        </thead>
-        <tbody id="existingBody"></tbody>
-      </table>
-      <div class="hint">Existing commitments are editable. Totals reconcile in Section G.</div>
-    `;
-    container.innerHTML = html;
-
-    const body = document.getElementById("existingBody");
-
-    function render() {
-      body.innerHTML = "";
-      (companyFacilities || []).forEach((r, i) => {
-        body.insertAdjacentHTML("beforeend", `
-          <tr>
-            <td><input type="text" id="ex_type_${i}" value="${escapeHtml(r.type || "")}"></td>
-            <td><input type="text" id="ex_bank_${i}" value="${escapeHtml(r.bank || "")}"></td>
-            <td class="num"><input type="number" id="ex_lim_${i}" value="${Number(r.limit || 0)}"></td>
-            <td class="num"><input type="number" id="ex_out_${i}" value="${Number(r.outstanding || 0)}"></td>
-            <td class="num"><input type="number" id="ex_mo_${i}" value="${Number(r.monthly || 0)}"></td>
-            <td class="center"><button class="smallBtn ghost" id="ex_del_${i}">Remove</button></td>
-          </tr>
-        `);
-      });
-
-      (companyFacilities || []).forEach((r, i) => {
-        const bind = (id, key, cast = (v) => v) => {
-          const el = document.getElementById(id);
-          el.addEventListener("input", () => {
-            companyFacilities[i][key] = cast(el.value);
-            recalculateAll(false);
-          });
+        // Section B editable state
+        const sectionBState = {
+            projectionSales: 0,
+            salesGrowth: 0.10,
+            ebitdaMargin: 0.10,
+            arDays: 45,
+            apDays: 30,
+            invDays: 30
         };
-        bind(`ex_type_${i}`, "type", (v) => v);
-        bind(`ex_bank_${i}`, "bank", (v) => v);
-        bind(`ex_lim_${i}`, "limit", Number);
-        bind(`ex_out_${i}`, "outstanding", Number);
-        bind(`ex_mo_${i}`, "monthly", Number);
 
-        document.getElementById(`ex_del_${i}`).addEventListener("click", () => {
-          companyFacilities.splice(i, 1);
-          render();
-          recalculateAll(false);
-        });
-      });
-    }
+        // Proposed facilities
+        const proposedFacilities = [];
 
-    document.getElementById("btnAddExisting").addEventListener("click", () => {
-      companyFacilities.push({ type: "", bank: "", limit: 0, outstanding: 0, monthly: 0 });
-      render();
-      recalculateAll(false);
-    });
+        function buildSectionA(){
+            const years = (auditedYearsDetected || []).slice().sort((a,b)=>a-b);
+            const container = document.getElementById("sectionA");
 
-    render();
-  }
+            if(!years.length){
+                container.innerHTML = '<div class="note warn">No audited years detected.</div>';
+                return;
+            }
 
-  function buildSectionF() {
-    const container = document.getElementById("sectionF");
-    let html = `
-      <div class="inline">
-        <button id="btnAddProposed" class="smallBtn">Add Proposed Facility</button>
-      </div>
-      <div style="height:10px"></div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Type</th><th>Bank</th>
-            <th class="num">Limit (RM)</th>
-            <th class="num">Outstanding (RM)</th>
-            <th class="num">Monthly (RM)</th>
-            <th class="center">Action</th>
-          </tr>
-        </thead>
-        <tbody id="propBody"></tbody>
-      </table>
-      <div class="hint">Proposed facilities are editable and will be included in Section G totals.</div>
-    `;
-    container.innerHTML = html;
+            const metrics = [
+                ["Revenue","revenue"],
+                ["COGS","cogs"],
+                ["Other Income","otherIncome"],
+                ["Opex (Admin)","opexAdmin"],
+                ["Opex (Other)","opexOther"],
+                ["Opex (Total)","opex"],
+                ["Finance Costs","financeCosts"],
+                ["Depreciation","depreciation"],
+                ["Tax","tax"],
+                ["Net Profit","netProfit"],
+                ["EBITDA","ebitda"]
+            ];
 
-    const body = document.getElementById("propBody");
+            let html = '<table class="table"><thead><tr><th>Item</th>';
+            for(const y of years) html += `<th class="num">FY${y}</th>`;
+            html += '</tr></thead><tbody>';
 
-    function render() {
-      body.innerHTML = "";
-      proposedFacilities.forEach((r, i) => {
-        body.insertAdjacentHTML("beforeend", `
-          <tr>
-            <td><input type="text" id="pf_type_${i}" value="${escapeHtml(r.type || "")}"></td>
-            <td><input type="text" id="pf_bank_${i}" value="${escapeHtml(r.bank || "")}"></td>
-            <td class="num"><input type="number" id="pf_lim_${i}" value="${Number(r.limit || 0)}"></td>
-            <td class="num"><input type="number" id="pf_out_${i}" value="${Number(r.outstanding || 0)}"></td>
-            <td class="num"><input type="number" id="pf_mo_${i}" value="${Number(r.monthly || 0)}"></td>
-            <td class="center"><button class="smallBtn ghost" id="pf_del_${i}">Remove</button></td>
-          </tr>
-        `);
-      });
+            for(const [label,key] of metrics){
+                html += `<tr><td>${escapeHtml(label)}</td>`;
+                for(const y of years){
+                    const row = historicalData[`fy${y}`] || {};
+                    html += `<td class="num">${fmt(row[key])}</td>`;
+                }
+                html += '</tr>';
+            }
 
-      proposedFacilities.forEach((r, i) => {
-        const bind = (id, key, cast = (v) => v) => {
-          const el = document.getElementById(id);
-          el.addEventListener("input", () => {
-            proposedFacilities[i][key] = cast(el.value);
-            recalculateAll(false);
-          });
-        };
-        bind(`pf_type_${i}`, "type", (v) => v);
-        bind(`pf_bank_${i}`, "bank", (v) => v);
-        bind(`pf_lim_${i}`, "limit", Number);
-        bind(`pf_out_${i}`, "outstanding", Number);
-        bind(`pf_mo_${i}`, "monthly", Number);
+            html += '</tbody></table>';
+            container.innerHTML = html;
 
-        document.getElementById(`pf_del_${i}`).addEventListener("click", () => {
-          proposedFacilities.splice(i, 1);
-          render();
-          recalculateAll(false);
-        });
-      });
-    }
+            const latest = getLatestAuditedYear();
+            document.getElementById("latestYear").innerText = latest ? `FY${latest}` : "-";
 
-    document.getElementById("btnAddProposed").addEventListener("click", () => {
-      proposedFacilities.push({ type: "", bank: "", limit: 0, outstanding: 0, monthly: 0 });
-      render();
-      recalculateAll(false);
-    });
+            // seed projection sales from latest audited revenue
+            if(latest && (!sectionBState.projectionSales || sectionBState.projectionSales<=0)){
+                const latestRev = Number((historicalData[`fy${latest}`] || {}).revenue || 0);
+                sectionBState.projectionSales = latestRev;
+            }
+        }
 
-    render();
-  }
+        function buildSectionB(){
+            const container = document.getElementById("sectionB");
 
-  function buildSectionG() {
-    const container = document.getElementById("sectionG");
+            const html = `
+              <table class="table">
+                <thead><tr><th>Input</th><th class="num">Value</th></tr></thead>
+                <tbody>
+                  <tr><td>Base sales (RM)</td><td class="num"><input id="b_sales" type="number" value="${sectionBState.projectionSales}"></td></tr>
+                  <tr><td>Sales growth</td><td class="num"><input id="b_sg" type="number" step="0.01" value="${sectionBState.salesGrowth}"></td></tr>
+                  <tr><td>EBITDA margin</td><td class="num"><input id="b_em" type="number" step="0.01" value="${sectionBState.ebitdaMargin}"></td></tr>
+                  <tr><td>AR days</td><td class="num"><input id="b_ar" type="number" value="${sectionBState.arDays}"></td></tr>
+                  <tr><td>AP days</td><td class="num"><input id="b_ap" type="number" value="${sectionBState.apDays}"></td></tr>
+                  <tr><td>Inventory days</td><td class="num"><input id="b_inv" type="number" value="${sectionBState.invDays}"></td></tr>
+                </tbody>
+              </table>
+              <div class="note" style="margin-top:10px">Changes here recompute Sections C/D/G and update Section H summary.</div>
+            `;
+            container.innerHTML = html;
 
-    const sumMonthly = (rows) => (rows || []).reduce((a, r) => a + Number(r.monthly || 0), 0);
-    const sumOutstanding = (rows) => (rows || []).reduce((a, r) => a + Number(r.outstanding || 0), 0);
+            const bind = (id,key,cast=Number)=>{
+                const el = document.getElementById(id);
+                el.addEventListener("input", ()=>{
+                    sectionBState[key] = cast(el.value);
+                    recalculateAll();
+                });
+            };
 
-    const exMo = sumMonthly(companyFacilities);
-    const pfMo = sumMonthly(proposedFacilities);
-    const totMo = exMo + pfMo;
+            bind("b_sales","projectionSales");
+            bind("b_sg","salesGrowth");
+            bind("b_em","ebitdaMargin");
+            bind("b_ar","arDays");
+            bind("b_ap","apDays");
+            bind("b_inv","invDays");
+        }
 
-    const exOut = sumOutstanding(companyFacilities);
-    const pfOut = sumOutstanding(proposedFacilities);
-    const totOut = exOut + pfOut;
+        function computeProjection(){
+            const sales = Number(sectionBState.projectionSales||0) * (1 + Number(sectionBState.salesGrowth||0));
+            const ebitda = sales * Number(sectionBState.ebitdaMargin||0);
+            return { sales, ebitda };
+        }
 
-    const html = `
-      <table class="table">
-        <thead><tr><th>Item</th><th class="num">Existing</th><th class="num">Proposed</th><th class="num">Total</th></tr></thead>
-        <tbody>
-          <tr><td>Monthly Commitments (RM)</td><td class="num">${fmt(exMo)}</td><td class="num">${fmt(pfMo)}</td><td class="num"><b>${fmt(totMo)}</b></td></tr>
-          <tr><td>Outstanding (RM)</td><td class="num">${fmt(exOut)}</td><td class="num">${fmt(pfOut)}</td><td class="num"><b>${fmt(totOut)}</b></td></tr>
-        </tbody>
-      </table>
-    `;
-    container.innerHTML = html;
+        function buildSectionC(){
+            const container = document.getElementById("sectionC");
+            const p = computeProjection();
+            container.innerHTML = `
+              <table class="table">
+                <thead><tr><th>Item</th><th class="num">Projection</th></tr></thead>
+                <tbody>
+                  <tr><td>Projected Sales (RM)</td><td class="num">${fmt(p.sales)}</td></tr>
+                  <tr><td>Projected EBITDA (RM)</td><td class="num">${fmt(p.ebitda)}</td></tr>
+                </tbody>
+              </table>
+            `;
+        }
 
-    // Update summary debt service
-    document.getElementById("sumDebtService").innerText = fmt(totMo * 12); // annualized
-  }
+        function computeWCR(){
+            const p = computeProjection();
+            const sales = p.sales;
+            const ar = (sales/365) * Number(sectionBState.arDays||0);
+            const ap = (sales/365) * Number(sectionBState.apDays||0);
+            const inv = (sales/365) * Number(sectionBState.invDays||0);
+            const wcr = ar + inv - ap;
+            return { ar, ap, inv, wcr, sales };
+        }
 
-  function getBankList() {
-    const banks = (bankRulesFull && bankRulesFull.banks) ? Object.keys(bankRulesFull.banks) : [];
-    return banks.sort();
-  }
+        function buildSectionD(){
+            const container = document.getElementById("sectionD");
+            const w = computeWCR();
+            container.innerHTML = `
+              <table class="table">
+                <thead><tr><th>Component</th><th class="num">Amount (RM)</th></tr></thead>
+                <tbody>
+                  <tr><td>Accounts Receivable</td><td class="num">${fmt(w.ar)}</td></tr>
+                  <tr><td>Inventory</td><td class="num">${fmt(w.inv)}</td></tr>
+                  <tr><td>Accounts Payable</td><td class="num">${fmt(w.ap)}</td></tr>
+                  <tr><td><b>WCR</b></td><td class="num"><b>${fmt(w.wcr)}</b></td></tr>
+                </tbody>
+              </table>
+            `;
+        }
 
-  function getModelsForBank(bank) {
-    const b = bankRulesFull?.banks?.[bank];
-    const models = b?.models || {};
-    return {
-      financial: !!models.financial?.enabled,
-      non_financial: !!models.non_financial?.enabled
-    };
-  }
+        function buildSectionE(){
+            const container = document.getElementById("sectionE");
+            container.innerHTML = `
+              <div class="inline" style="margin-bottom:10px">
+                <button id="btnAddExisting">Add Existing Commitment</button>
+              </div>
+              <table class="table">
+                <thead>
+                  <tr><th>Type</th><th>Bank</th><th class="num">Limit</th><th class="num">Outstanding</th><th class="num">Monthly</th><th class="center">Action</th></tr>
+                </thead>
+                <tbody id="existingBody"></tbody>
+              </table>
+            `;
 
-  function getFormulaText(bank, modelKey) {
-    const b = bankRulesFull?.banks?.[bank];
-    const m = b?.models?.[modelKey];
-    return m?.formula_text || "";
-  }
+            const body = document.getElementById("existingBody");
 
-  function computeDscrForLatestAudited(bank, modelKey) {
-    const latest = getLatestAuditedYear();
-    if (!latest) return { dscr: null, ebitda: 0, debtServiceAnnual: 0 };
+            function render(){
+                body.innerHTML = "";
+                (companyFacilities || []).forEach((r,i)=>{
+                    body.insertAdjacentHTML("beforeend", `
+                      <tr>
+                        <td><input type="text" id="ex_type_${i}" value="${escapeHtml(r.type||"")}"></td>
+                        <td><input type="text" id="ex_bank_${i}" value="${escapeHtml(r.bank||"")}"></td>
+                        <td class="num"><input type="number" id="ex_lim_${i}" value="${Number(r.limit||0)}"></td>
+                        <td class="num"><input type="number" id="ex_out_${i}" value="${Number(r.outstanding||0)}"></td>
+                        <td class="num"><input type="number" id="ex_mo_${i}" value="${Number(r.monthly||0)}"></td>
+                        <td class="center"><button id="ex_del_${i}">Remove</button></td>
+                      </tr>
+                    `);
+                });
 
-    const row = historicalData[`fy${latest}`] || {};
-    const ebitda = Number(row.ebitda || 0);
+                (companyFacilities || []).forEach((r,i)=>{
+                    const bind=(id,key,cast=v=>v)=>{
+                        const el=document.getElementById(id);
+                        el.addEventListener("input",()=>{
+                            companyFacilities[i][key]=cast(el.value);
+                            recalculateAll(false);
+                        });
+                    };
+                    bind(`ex_type_${i}`,"type",v=>v);
+                    bind(`ex_bank_${i}`,"bank",v=>v);
+                    bind(`ex_lim_${i}`,"limit",Number);
+                    bind(`ex_out_${i}`,"outstanding",Number);
+                    bind(`ex_mo_${i}`,"monthly",Number);
 
-    const sumMonthly = (rows) => (rows || []).reduce((a, r) => a + Number(r.monthly || 0), 0);
-    const exMo = sumMonthly(companyFacilities);
-    const pfMo = sumMonthly(proposedFacilities);
-    const debtServiceAnnual = (exMo + pfMo) * 12;
+                    document.getElementById(`ex_del_${i}`).addEventListener("click",()=>{
+                        companyFacilities.splice(i,1);
+                        render();
+                        recalculateAll(false);
+                    });
+                });
+            }
 
-    const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
-    return { dscr, ebitda, debtServiceAnnual };
-  }
+            document.getElementById("btnAddExisting").addEventListener("click",()=>{
+                companyFacilities.push({type:"",bank:"",limit:0,outstanding:0,monthly:0});
+                render();
+                recalculateAll(false);
+            });
 
-  function buildSectionH() {
-    const container = document.getElementById("sectionH");
+            render();
+        }
 
-    const banks = getBankList();
-    if (!banks.length) {
-      container.innerHTML = '<div class="note warn">No bank rules found in bankRulesFull.</div>';
-      return;
-    }
+        function buildSectionF(){
+            const container = document.getElementById("sectionF");
+            container.innerHTML = `
+              <div class="inline" style="margin-bottom:10px">
+                <button id="btnAddProposed">Add Proposed Facility</button>
+              </div>
+              <table class="table">
+                <thead>
+                  <tr><th>Type</th><th>Bank</th><th class="num">Limit</th><th class="num">Outstanding</th><th class="num">Monthly</th><th class="center">Action</th></tr>
+                </thead>
+                <tbody id="propBody"></tbody>
+              </table>
+            `;
 
-    // current selection (persist in memory)
-    if (!buildSectionH.state) {
-      buildSectionH.state = { bank: banks[0], model: "financial" };
-    }
+            const body = document.getElementById("propBody");
 
-    const state = buildSectionH.state;
+            function render(){
+                body.innerHTML = "";
+                proposedFacilities.forEach((r,i)=>{
+                    body.insertAdjacentHTML("beforeend", `
+                      <tr>
+                        <td><input type="text" id="pf_type_${i}" value="${escapeHtml(r.type||"")}"></td>
+                        <td><input type="text" id="pf_bank_${i}" value="${escapeHtml(r.bank||"")}"></td>
+                        <td class="num"><input type="number" id="pf_lim_${i}" value="${Number(r.limit||0)}"></td>
+                        <td class="num"><input type="number" id="pf_out_${i}" value="${Number(r.outstanding||0)}"></td>
+                        <td class="num"><input type="number" id="pf_mo_${i}" value="${Number(r.monthly||0)}"></td>
+                        <td class="center"><button id="pf_del_${i}">Remove</button></td>
+                      </tr>
+                    `);
+                });
 
-    const models = getModelsForBank(state.bank);
-    // if current model disabled, select first enabled
-    if (state.model === "financial" && !models.financial) state.model = models.non_financial ? "non_financial" : "financial";
-    if (state.model === "non_financial" && !models.non_financial) state.model = models.financial ? "financial" : "non_financial";
+                proposedFacilities.forEach((r,i)=>{
+                    const bind=(id,key,cast=v=>v)=>{
+                        const el=document.getElementById(id);
+                        el.addEventListener("input",()=>{
+                            proposedFacilities[i][key]=cast(el.value);
+                            recalculateAll(false);
+                        });
+                    };
+                    bind(`pf_type_${i}`,"type",v=>v);
+                    bind(`pf_bank_${i}`,"bank",v=>v);
+                    bind(`pf_lim_${i}`,"limit",Number);
+                    bind(`pf_out_${i}`,"outstanding",Number);
+                    bind(`pf_mo_${i}`,"monthly",Number);
 
-    const { dscr, ebitda, debtServiceAnnual } = computeDscrForLatestAudited(state.bank, state.model);
-    const formulaText = getFormulaText(state.bank, state.model);
+                    document.getElementById(`pf_del_${i}`).addEventListener("click",()=>{
+                        proposedFacilities.splice(i,1);
+                        render();
+                        recalculateAll(false);
+                    });
+                });
+            }
 
-    const latest = getLatestAuditedYear();
-    const latestLabel = latest ? `FY${latest}` : "-";
+            document.getElementById("btnAddProposed").addEventListener("click",()=>{
+                proposedFacilities.push({type:"",bank:"",limit:0,outstanding:0,monthly:0});
+                render();
+                recalculateAll(false);
+            });
 
-    const html = `
-      <div class="inline">
-        <label>Bank</label>
-        <div class="field">
-          <select id="h_bank">
-            ${banks.map(b => `<option ${b === state.bank ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
-          </select>
-        </div>
+            render();
+        }
 
-        <label>Model</label>
-        <div class="field">
-          <select id="h_model">
-            ${models.financial ? `<option value="financial" ${state.model==="financial"?"selected":""}>financial</option>` : ""}
-            ${models.non_financial ? `<option value="non_financial" ${state.model==="non_financial"?"selected":""}>non_financial</option>` : ""}
-          </select>
-        </div>
-      </div>
+        function buildSectionG(){
+            const container = document.getElementById("sectionG");
+            const sumMonthly = rows => (rows||[]).reduce((a,r)=>a+Number(r.monthly||0),0);
+            const sumOutstanding = rows => (rows||[]).reduce((a,r)=>a+Number(r.outstanding||0),0);
 
-      <div style="height:10px"></div>
+            const exMo = sumMonthly(companyFacilities);
+            const pfMo = sumMonthly(proposedFacilities);
+            const totMo = exMo + pfMo;
 
-      <table class="table">
-        <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
-        <tbody>
-          <tr><td>Audited year used</td><td class="num">${escapeHtml(latestLabel)}</td></tr>
-          <tr><td>EBITDA (audited)</td><td class="num">${fmt(ebitda)}</td></tr>
-          <tr><td>Debt service (annual)</td><td class="num">${fmt(debtServiceAnnual)}</td></tr>
-          <tr><td><b>DSCR</b></td><td class="num"><b>${dscr === null ? "-" : fmt2(dscr)}</b></td></tr>
-        </tbody>
-      </table>
+            const exOut = sumOutstanding(companyFacilities);
+            const pfOut = sumOutstanding(proposedFacilities);
+            const totOut = exOut + pfOut;
 
-      <div class="formulaBox">${escapeHtml(formulaText)}</div>
-    `;
+            container.innerHTML = `
+              <table class="table">
+                <thead><tr><th>Item</th><th class="num">Existing</th><th class="num">Proposed</th><th class="num">Total</th></tr></thead>
+                <tbody>
+                  <tr><td>Monthly Commitments (RM)</td><td class="num">${fmt(exMo)}</td><td class="num">${fmt(pfMo)}</td><td class="num"><b>${fmt(totMo)}</b></td></tr>
+                  <tr><td>Outstanding (RM)</td><td class="num">${fmt(exOut)}</td><td class="num">${fmt(pfOut)}</td><td class="num"><b>${fmt(totOut)}</b></td></tr>
+                </tbody>
+              </table>
+            `;
 
-    container.innerHTML = html;
+            document.getElementById("sumDebtService").innerText = fmt(totMo * 12);
+        }
 
-    document.getElementById("h_bank").addEventListener("change", (e) => {
-      state.bank = e.target.value;
-      buildSectionH();
-      recalculateSummary();
-    });
+        function getBankList(){
+            const banks = (bankRulesFull && bankRulesFull.banks) ? Object.keys(bankRulesFull.banks) : [];
+            return banks.sort();
+        }
 
-    document.getElementById("h_model").addEventListener("change", (e) => {
-      state.model = e.target.value;
-      buildSectionH();
-      recalculateSummary();
-    });
+        function getModelsForBank(bank){
+            const b = bankRulesFull?.banks?.[bank];
+            const models = b?.models || {};
+            return {
+                financial: !!models.financial?.enabled,
+                non_financial: !!models.non_financial?.enabled
+            };
+        }
 
-    // Update summary label
-    document.getElementById("sumBankModel").innerText = `${state.bank} / ${state.model}`;
-  }
+        function getFormulaText(bank, modelKey){
+            const b = bankRulesFull?.banks?.[bank];
+            const m = b?.models?.[modelKey];
+            return m?.formula_text || "";
+        }
 
-  function recalculateSummary() {
-    const latest = getLatestAuditedYear();
-    const row = latest ? (historicalData[`fy${latest}`] || {}) : {};
-    const ebitda = Number(row.ebitda || 0);
+        function computeDscrForLatestAudited(bank, modelKey){
+            const latest = getLatestAuditedYear();
+            if(!latest) return { dscr:null, ebitda:0, debtServiceAnnual:0 };
+
+            const row = historicalData[`fy${latest}`] || {};
+            const ebitda = Number(row.ebitda || 0);
+
+            const sumMonthly = rows => (rows||[]).reduce((a,r)=>a+Number(r.monthly||0),0);
+            const exMo = sumMonthly(companyFacilities);
+            const pfMo = sumMonthly(proposedFacilities);
+            const debtServiceAnnual = (exMo + pfMo) * 12;
+
+            const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
+            return { dscr, ebitda, debtServiceAnnual };
+        }
+
+        function buildSectionH(){
+            const container = document.getElementById("sectionH");
+            const banks = getBankList();
+            if(!banks.length){
+                container.innerHTML = '<div class="note warn">No bank rules found in bankRulesFull.</div>';
+                return;
+            }
+
+            if(!buildSectionH.state){
+                buildSectionH.state = { bank:banks[0], model:"financial" };
+            }
+            const state = buildSectionH.state;
+
+            const models = getModelsForBank(state.bank);
+            if(state.model==="financial" && !models.financial) state.model = models.non_financial ? "non_financial" : "financial";
+            if(state.model==="non_financial" && !models.non_financial) state.model = models.financial ? "financial" : "non_financial";
+
+            const { dscr, ebitda, debtServiceAnnual } = computeDscrForLatestAudited(state.bank, state.model);
+            const formulaText = getFormulaText(state.bank, state.model);
+
+            const latest = getLatestAuditedYear();
+            const latestLabel = latest ? `FY${latest}` : "-";
+
+            container.innerHTML = `
+              <div class="inline" style="margin-bottom:10px">
+                <div style="min-width:220px">
+                  <div class="note" style="margin-bottom:6px">Bank</div>
+                  <select id="h_bank">${banks.map(b=>`<option ${b===state.bank?"selected":""}>${escapeHtml(b)}</option>`).join("")}</select>
+                </div>
+                <div style="min-width:220px">
+                  <div class="note" style="margin-bottom:6px">Model</div>
+                  <select id="h_model">
+                    ${models.financial ? `<option value="financial" ${state.model==="financial"?"selected":""}>financial</option>` : ""}
+                    ${models.non_financial ? `<option value="non_financial" ${state.model==="non_financial"?"selected":""}>non_financial</option>` : ""}
+                  </select>
+                </div>
+              </div>
+
+              <table class="table">
+                <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+                <tbody>
+                  <tr><td>Audited year used</td><td class="num">${escapeHtml(latestLabel)}</td></tr>
+                  <tr><td>EBITDA (audited)</td><td class="num">${fmt(ebitda)}</td></tr>
+                  <tr><td>Debt service (annual)</td><td class="num">${fmt(debtServiceAnnual)}</td></tr>
+                  <tr><td><b>DSCR</b></td><td class="num"><b>${dscr===null?"-":fmt2(dscr)}</b></td></tr>
+                </tbody>
+              </table>
+
+              <div class="formula" style="margin-top:10px">${escapeHtml(formulaText)}</div>
+            `;
+
+            document.getElementById("h_bank").addEventListener("change",(e)=>{
+                state.bank = e.target.value;
+                buildSectionH();
+                recalculateSummary();
+            });
+            document.getElementById("h_model").addEventListener("change",(e)=>{
+                state.model = e.target.value;
+                buildSectionH();
+                recalculateSummary();
+            });
+
+            document.getElementById("sumBankModel").innerText = `${state.bank} / ${state.model}`;
+        }
+
+        function recalculateSummary(){
+            const latest = getLatestAuditedYear();
+            const row = latest ? (historicalData[`fy${latest}`] || {}) : {};
+            const ebitda = Number(row.ebitda || 0);
+            document.getElementById("sumEbitda").innerText = fmt(ebitda);
+
+            const ds = document.getElementById("sumDebtService").innerText;
+            const debtServiceAnnual = Number(String(ds).replace(/,/g,"")) || 0;
+            const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
+            document.getElementById("sumDscr").innerText = dscr===null ? "-" : fmt2(dscr);
+        }
+
+        function recalculateAll(rebuildTables=true){
+            if(rebuildTables){
+                buildSectionC();
+                buildSectionD();
+                buildSectionG();
+                buildSectionH();
+            }else{
+                buildSectionG();
+                buildSectionH();
+            }
+            recalculateSummary();
+        }
+
+        function initControls(){
+            const sel = document.getElementById("scenarioSelect");
+            sel.innerHTML = SCENARIOS.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+
+            document.getElementById("btnApplyScenario").addEventListener("click", ()=>{
+                const id = sel.value;
+                const sc = SCENARIOS.find(x=>x.id===id);
+                if(!sc) return;
+
+                sectionBState.salesGrowth = sc.inputs.salesGrowth;
+                sectionBState.ebitdaMargin = sc.inputs.ebitdaMargin;
+                sectionBState.arDays = sc.inputs.arDays;
+                sectionBState.apDays = sc.inputs.apDays;
+                sectionBState.invDays = sc.inputs.invDays;
+
+                const upd=(id,val)=>{ const el=document.getElementById(id); if(el) el.value = val; };
+                upd("b_sg", sectionBState.salesGrowth);
+                upd("b_em", sectionBState.ebitdaMargin);
+                upd("b_ar", sectionBState.arDays);
+                upd("b_ap", sectionBState.apDays);
+                upd("b_inv", sectionBState.invDays);
+
+                recalculateAll();
+            });
+
+            document.getElementById("btnSave").addEventListener("click", ()=>{
+                saveDraft();
+                alert("Draft saved to localStorage.");
+            });
+            document.getElementById("btnReset").addEventListener("click", ()=> resetDraft());
+            document.getElementById("btnExport").addEventListener("click", ()=> window.print());
+        }
+
+        (function init(){
+            const draft = loadDraft();
+            if(draft && draft.historicalData){
+                try{
+                    if(draft.historicalData) Object.assign(historicalData, draft.historicalData);
+                    if(Array.isArray(draft.companyFacilities)){
+                        companyFacilities.splice(0, companyFacilities.length, ...draft.companyFacilities);
+                    }
+                    if(Array.isArray(draft.directorFacilities)){
+                        directorFacilities.splice(0, directorFacilities.length, ...draft.directorFacilities);
+                    }
+                    if(draft.bankRulesFull) Object.assign(bankRulesFull, draft.bankRulesFull);
+                }catch(e){}
+            }
+
+            buildSectionA();
+            buildSectionB();
+            buildSectionC();
+            buildSectionD();
+            buildSectionE();
+            buildSectionF();
+            buildSectionG();
+            buildSectionH();
+            initControls();
+            recalculateSummary();
+        })();
+
     document.getElementById("sumEbitda").innerText = fmt(ebitda);
 
     // debt service is updated in Section G builder; DSCR recalculated here
@@ -605,3 +633,4 @@
     initControls();
     recalculateSummary();
   })();
+
