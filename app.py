@@ -38,10 +38,32 @@ def split_shell(shell_html: str) -> tuple[str, str]:
     return prefix, suffix
 
 
-def derive_bank_rules(bank_rules_full: dict) -> dict:
+def validate_payload(p: dict) -> list[str]:
+    issues = []
+    required = ["auditedYearsDetected", "historicalData", "companyFacilities", "directorFacilities"]
+    for k in required:
+        if k not in p:
+            issues.append(f"Missing required key: {k}")
+
+    if "auditedYearsDetected" in p and not p.get("auditedYearsDetected"):
+        issues.append("auditedYearsDetected is empty (must include at least one audited year).")
+
+    # dscr_fixed_v3 engine expects bankRules (it exists in the original template)
+    # We can inject bankRules derived from bankRulesFull or from rules/bankRules.json,
+    # but best fidelity is to include bankRules in payload.
+    if "bankRules" not in p and "bankRulesFull" not in p and not BANKRULES_PATH.exists():
+        issues.append(
+            "Missing bankRules/bankRulesFull and rules/bankRules.json not found. "
+            "Provide bank rules or commit rules/bankRules.json."
+        )
+    return issues
+
+
+def derive_bank_rules_minimal(bank_rules_full: dict) -> dict:
     """
-    Derived from bankRulesFull only (no hardcoding).
-    Produces a lightweight compatibility map if the engine reads `bankRules`.
+    Minimal fallback only.
+    IMPORTANT: dscr_fixed_v3 may use extra keys (turnoverMultiplier, adjustment, etc.)
+    If you want exact dscr_fixed_v3 behavior, include `bankRules` in payload.
     """
     out = {}
     banks = bank_rules_full.get("banks") or {}
@@ -58,63 +80,63 @@ def derive_bank_rules(bank_rules_full: dict) -> dict:
     return out
 
 
-def validate_payload(p: dict) -> list[str]:
-    issues = []
-    required = ["auditedYearsDetected", "historicalData", "companyFacilities", "directorFacilities"]
-    for k in required:
-        if k not in p:
-            issues.append(f"Missing required key: {k}")
-    if "auditedYearsDetected" in p and not p.get("auditedYearsDetected"):
-        issues.append("auditedYearsDetected is empty (must include at least one audited year).")
-    return issues
-
-
 def build_injection_block(payload: dict) -> str:
     audited_years = payload.get("auditedYearsDetected", [])
     historical = payload.get("historicalData", {})
     company_fac = payload.get("companyFacilities", [])
     director_fac = payload.get("directorFacilities", [])
 
+    # dscr_fixed_v3 uses bankRules. Prefer payload.bankRules if provided.
+    bank_rules = payload.get("bankRules")
+
+    # bankRulesFull can come from payload, or repo file
     bank_rules_full = payload.get("bankRulesFull")
-    if bank_rules_full is None:
+    if bank_rules_full is None and BANKRULES_PATH.exists():
         bank_rules_full = load_json(BANKRULES_PATH)
 
-    bank_rules = derive_bank_rules(bank_rules_full)
+    # If bankRules isn't provided, derive a minimal fallback from bankRulesFull
+    if bank_rules is None:
+        bank_rules = derive_bank_rules_minimal(bank_rules_full or {})
 
     def js(obj) -> str:
         return json.dumps(obj, ensure_ascii=False)
 
-    # Compatibility aliases are included to support older engines with different naming.
+    # IMPORTANT: define the same constants dscr_fixed_v3 expects.
+    # We also define bankRulesFull for your newer workflows (harmless if unused).
     return "\n".join(
         [
             "",
-            "        // =============================================",
-            "        // [INJECTED BY STREAMLIT ASSEMBLER]",
-            "        // =============================================",
-            f"        const auditedYearsDetected = {js(audited_years)};",
-            f"        const historicalData = {js(historical)};",
-            f"        const companyFacilities = {js(company_fac)};",
-            f"        const directorFacilities = {js(director_fac)};",
-            f"        const bankRulesFull = {js(bank_rules_full)};",
-            "        // Derived from bankRulesFull only (never hardcoded)",
-            f"        const bankRules = {js(bank_rules)};",
-            "",
-            "        // Compatibility aliases (safe no-ops if unused by the engine)",
-            "        const existingCommitments = companyFacilities;",
-            "        const directorsCommitments = directorFacilities;",
+            "  // =============================================",
+            "  // [INJECTED BY STREAMLIT ASSEMBLER]",
+            "  // =============================================",
+            f"  const auditedYearsDetected = {js(audited_years)};",
+            f"  const historicalData = {js(historical)};",
+            f"  const bankRules = {js(bank_rules)};",
+            f"  const companyFacilities = {js(company_fac)};",
+            f"  const directorFacilities = {js(director_fac)};",
+            f"  const bankRulesFull = {js(bank_rules_full or {})};",
             "",
         ]
     )
 
 
 def assemble_html(payload: dict) -> str:
+    if not SHELL_PATH.exists():
+        raise FileNotFoundError(f"Missing shell: {SHELL_PATH}")
+    if not ENGINE_PATH.exists():
+        raise FileNotFoundError(f"Missing engine: {ENGINE_PATH}")
+
     shell = load_text(SHELL_PATH)
     engine = load_text(ENGINE_PATH)
 
-    prefix, _suffix = split_shell(shell)
+    prefix, suffix = split_shell(shell)
     injection = build_injection_block(payload)
 
-    return "".join([prefix, injection, "\n", engine, "\n</script></body></html>\n"])
+    # CRITICAL FIX:
+    # - keep suffix (do NOT drop it)
+    # - do NOT append hardcoded </script></body></html>
+    # because engine extracted from dscr_fixed_v3 already includes the proper closings.
+    return "".join([prefix, injection, suffix, engine])
 
 
 st.set_page_config(page_title="DSCR Dashboard Assembler", layout="wide")
@@ -130,6 +152,7 @@ with st.expander("Debug help", expanded=False):
 Common issues:
 - JSON wrapped in ``` fences: this app strips them automatically.
 - Missing keys: must include auditedYearsDetected, historicalData, companyFacilities, directorFacilities.
+- If you want dscr_fixed_v3 bank logic 100% identical, include `bankRules` in the payload (same shape as dscr_fixed_v3).
 - Template files missing: ensure assets/ and rules/ are committed to GitHub exactly as named.
 """
     )
@@ -167,7 +190,6 @@ if issues:
     st.error("Payload validation failed:\n- " + "\n- ".join(issues))
     st.stop()
 
-# Assemble
 try:
     html_out = assemble_html(payload)
 except Exception as e:
