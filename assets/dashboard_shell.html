@@ -3,201 +3,280 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Financial Projection & DSCR Calculator</title>
+    <title>DSCR Debt Capacity Dashboard</title>
     <style>
-        :root{
-            --primary:#4f46e5;
-            --primary-2:#4338ca;
-            --bg:#f5f7fb;
-            --card:#ffffff;
-            --text:#0f172a;
-            --muted:#64748b;
-            --line:#e2e8f0;
-            --good:#16a34a;
-            --bad:#dc2626;
-            --warn:#d97706;
-        }
-        *{box-sizing:border-box}
-        body{
-            margin:0;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-            background:var(--bg);
-            color:var(--text);
-        }
-        header{
-            background:linear-gradient(135deg,var(--primary),var(--primary-2));
-            color:#fff;
-            padding:18px 18px;
-        }
-        .wrap{max-width:1200px;margin:0 auto;padding:18px}
-        h1{margin:0;font-size:20px;letter-spacing:.2px}
-        .sub{margin-top:6px;opacity:.92;font-size:12.5px}
-        .grid{
-            display:grid;
-            grid-template-columns: 1.2fr .8fr;
-            gap:14px;
-            margin-top:14px;
-        }
-        @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-        .card{
-            background:var(--card);
-            border:1px solid var(--line);
-            border-radius:14px;
-            box-shadow:0 6px 18px rgba(15, 23, 42, .06);
-            overflow:hidden;
-        }
-        .card .hd{
-            padding:12px 14px;
-            border-bottom:1px solid var(--line);
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:10px;
-        }
-        .card .ttl{font-weight:800;font-size:13.5px}
-        .card .tag{font-size:12px;color:var(--muted)}
-        .card .bd{padding:14px}
-        .pill{
-            display:inline-flex;
-            align-items:center;
-            gap:8px;
-            padding:6px 10px;
-            border-radius:999px;
-            background:#eef2ff;
-            border:1px solid #e0e7ff;
-            color:#3730a3;
-            font-size:12px;
-            font-weight:700;
-        }
-        .mini{
-            display:grid;
-            grid-template-columns:repeat(3,1fr);
-            gap:10px;
-        }
-        @media (max-width: 720px){ .mini{grid-template-columns:1fr} }
-        .kpi{
-            border:1px solid var(--line);
-            border-radius:12px;
-            padding:12px;
-            background:#fff;
-        }
-        .kpi .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-        .kpi .v{margin-top:6px;font-size:18px;font-weight:900}
-        .note{font-size:12.5px;color:var(--muted);line-height:1.45}
-        .divider{height:1px;background:var(--line);margin:12px 0}
-        .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-        button{
-            border:1px solid var(--line);
-            background:#fff;
-            color:var(--text);
-            padding:9px 12px;
-            border-radius:10px;
-            cursor:pointer;
-            font-size:12.5px;
-            box-shadow:0 4px 14px rgba(15, 23, 42, .06);
-        }
-        button.primary{
-            background:var(--primary);
-            border-color:var(--primary);
-            color:#fff;
-        }
-        button:hover{filter:brightness(1.02)}
-        select, input[type="text"], input[type="number"]{
-            width:100%;
-            padding:8px 8px;
-            border-radius:10px;
-            border:1px solid var(--line);
-            background:#fff;
-            font-size:12.5px;
-            outline:none;
-        }
-        .table{
-            width:100%;
-            border-collapse:separate;
-            border-spacing:0;
-            border:1px solid var(--line);
-            border-radius:12px;
-            overflow:hidden;
-            background:#fff;
-        }
-        .table th,.table td{
-            padding:10px 10px;
-            border-bottom:1px solid var(--line);
-            font-size:12.5px;
-        }
-        .table th{
-            background:#f8fafc;
-            font-weight:800;
-            color:#334155;
-            text-align:left;
-        }
-        .table tr:last-child td{border-bottom:none}
-        .num{text-align:right;font-variant-numeric: tabular-nums}
-        .center{text-align:center}
-        .good{color:var(--good);font-weight:800}
-        .bad{color:var(--bad);font-weight:800}
-        .warn{color:var(--warn);font-weight:800}
-        .formula{
-            border:1px dashed var(--line);
-            background:#f8fafc;
-            padding:10px 12px;
-            border-radius:12px;
-            font-size:12px;
-            color:var(--muted);
-            white-space:pre-wrap;
-        }
-        .section{margin-top:14px}
-    </style>
+:root{
+    --primary:#4f46e5;
+    --primary2:#4338ca;
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --line:#e5e7eb;
+    --good:#16a34a;
+    --bad:#dc2626;
+    --warn:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+.container{
+    max-width:1200px;
+    margin:0 auto;
+    padding:16px;
+}
+.header{
+    background:linear-gradient(135deg,var(--primary),var(--primary2));
+    color:#fff;
+    padding:18px 16px;
+}
+.header .container{padding:0 16px}
+.h-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:800;
+    letter-spacing:.2px;
+}
+.h-sub{
+    margin-top:6px;
+    opacity:.92;
+    font-size:12.5px;
+}
+.summary-grid{
+    display:grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap:14px;
+    margin-top:14px;
+}
+@media (max-width: 980px){ .summary-grid{grid-template-columns:1fr} }
+.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 6px 18px rgba(15,23,42,.06);
+    overflow:hidden;
+}
+.card-header{
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+.card-title{
+    font-weight:800;
+    font-size:13.5px;
+}
+.card-body{padding:14px}
+.pills{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+.pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#eef2ff;
+    border:1px solid #e0e7ff;
+    color:#3730a3;
+    font-size:12px;
+    font-weight:700;
+}
+.note{
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.45;
+}
+.btn-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+button{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:12.5px;
+    box-shadow:0 4px 14px rgba(15,23,42,.06);
+}
+button.primary{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+}
+button:hover{filter:brightness(1.02)}
+select,input[type="text"],input[type="number"]{
+    width:100%;
+    padding:8px 8px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:12.5px;
+    outline:none;
+}
+.table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    background:#fff;
+}
+.table th,.table td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--line);
+    font-size:12.5px;
+}
+.table th{
+    background:#f8fafc;
+    font-weight:800;
+    color:#334155;
+    text-align:left;
+}
+.table tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.good{color:var(--good);font-weight:800}
+.bad{color:var(--bad);font-weight:800}
+.warn{color:var(--warn);font-weight:800}
+.formula{
+    border:1px dashed var(--line);
+    background:#f8fafc;
+    padding:10px 12px;
+    border-radius:12px;
+    font-size:12px;
+    color:var(--muted);
+    white-space:pre-wrap;
+}
+.section{margin-top:14px}
+
+/* --- DSCR Fixed v3 layout blocks --- */
+.dashboard-grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:14px;
+    margin-top:14px;
+}
+.section-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+}
+.small{
+    font-size:12px;
+    color:var(--muted);
+}
+
+/* Gauge styling (as per dscr_fixed_v3) */
+.gauge-wrap{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+}
+.gauge{
+    width:160px;
+    height:160px;
+    border-radius:50%;
+    background:conic-gradient(var(--primary) 0deg, #e2e8f0 0deg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+}
+.gauge::after{
+    content:"";
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:#fff;
+    position:absolute;
+}
+.gauge .gauge-text{
+    position:relative;
+    z-index:1;
+    text-align:center;
+}
+.gauge .gauge-text .v{
+    font-size:22px;
+    font-weight:900;
+}
+.gauge .gauge-text .k{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+
+/* spacing */
+.divider{height:1px;background:var(--line);margin:12px 0}
+.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+</style>
 </head>
 <body>
-<header>
-    <div class="wrap">
-        <h1>Financial Projection & DSCR Calculator</h1>
-        <div class="sub">Audited extraction → projection → commitments → bank DSCR (latest audited year)</div>
-    </div>
-</header>
 
-<div class="wrap">
-    <div class="grid">
+<div class="header">
+    <div class="container">
+        <div class="h-title">DSCR Debt Capacity Dashboard</div>
+        <div class="h-sub">Audited extraction → projection → commitments → bank DSCR (latest audited year)</div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Summary / Controls (dscr_fixed_v3 style) -->
+    <div class="summary-grid">
         <div class="card">
-            <div class="hd">
-                <div class="ttl">Summary</div>
-                <div class="tag">
+            <div class="card-header">
+                <div class="card-title">Summary</div>
+                <div class="pills">
                     <span class="pill">Latest audited year: <span id="latestYear">-</span></span>
-                    <span class="pill">Bank model: <span id="sumBankModel">-</span></span>
+                    <span class="pill">Bank/model: <span id="sumBankModel">-</span></span>
                 </div>
             </div>
-            <div class="bd">
-                <div class="mini">
-                    <div class="kpi">
-                        <div class="k">EBITDA (latest audited)</div>
-                        <div class="v" id="sumEbitda">-</div>
+            <div class="card-body">
+                <div class="gauge-wrap">
+                    <div class="gauge" id="dscrGauge">
+                        <div class="gauge-text">
+                            <div class="v" id="sumDscr">-</div>
+                            <div class="k">DSCR</div>
+                        </div>
                     </div>
-                    <div class="kpi">
-                        <div class="k">Debt Service (existing + proposed)</div>
-                        <div class="v" id="sumDebtService">-</div>
+                    <div style="flex:1;min-width:240px">
+                        <div class="note"><b>EBITDA (latest audited):</b> <span id="sumEbitda">-</span></div>
+                        <div class="note" style="margin-top:6px"><b>Debt service (annual):</b> <span id="sumDebtService">-</span></div>
+                        <div class="divider"></div>
+                        <div class="note">Section H uses latest audited year only. Facilities are editable; projections compute from Section B.</div>
                     </div>
-                    <div class="kpi">
-                        <div class="k">DSCR (latest audited)</div>
-                        <div class="v" id="sumDscr">-</div>
-                    </div>
-                </div>
-                <div class="divider"></div>
-                <div class="note">
-                    Section H uses <b>latest audited year only</b> and derives bank/model options from <b>bankRulesFull</b>.
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="hd">
-                <div class="ttl">Controls</div>
-                <div class="tag">Scenario presets update Section B inputs</div>
+            <div class="card-header">
+                <div class="card-title">Controls</div>
+                <div class="small">Scenario presets update Section B inputs</div>
             </div>
-            <div class="bd">
+            <div class="card-body">
                 <div class="inline" style="margin-bottom:10px">
                     <div style="min-width:220px">
-                        <div class="note" style="margin-bottom:6px">Scenario</div>
+                        <div class="small" style="margin-bottom:6px">Scenario</div>
                         <select id="scenarioSelect"></select>
                     </div>
                     <button class="primary" id="btnApplyScenario">Apply</button>
@@ -205,96 +284,97 @@
                     <button id="btnReset">Reset Draft</button>
                     <button id="btnExport">Export (Print)</button>
                 </div>
-                <div class="note">Edits are stored locally (draft restore). Use Reset Draft to clear localStorage.</div>
+                <div class="note">Draft is stored in localStorage. Use Reset Draft to clear localStorage.</div>
             </div>
         </div>
     </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section A — Audited / Management Accounts</div>
-            <div class="tag">Extracted values (flexible years)</div>
+    <!-- Sections (dscr_fixed_v3 structure / IDs) -->
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section A — Audited / Management Accounts</div>
+                <div class="small">Extracted values (flexible years)</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionABody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionA"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section B — Projection Inputs</div>
-            <div class="tag">Editable inputs drive C/D</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section B — Projection Inputs</div>
+                <div class="small">Editable inputs drive C/D</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionBBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionB"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section C — Projections</div>
-            <div class="tag">Computed from Section B inputs</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section C — Projections</div>
+                <div class="small">Computed from Section B inputs</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionCBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionC"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section D — Working Capital Requirement (WCR)</div>
-            <div class="tag">Computed from B + C</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section D — Working Capital Requirement (WCR)</div>
+                <div class="small">Computed from B + C</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionDBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionD"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section E — Existing Commitments</div>
-            <div class="tag">Editable</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section E — Existing Commitments</div>
+                <div class="small">Editable</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionEBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionE"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section F — Proposed Facilities</div>
-            <div class="tag">Add rows</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section F — Proposed Facilities</div>
+                <div class="small">Add rows</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionFBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionF"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section G — Totals (E + F)</div>
-            <div class="tag">Reconciliation</div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section G — Totals (E + F)</div>
+                <div class="small">Reconciles E + F</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionGBody"></div>
+            </div>
         </div>
-        <div class="bd">
-            <div id="sectionG"></div>
-        </div>
-    </div>
 
-    <div class="section card">
-        <div class="hd">
-            <div class="ttl">Section H — Bank DSCR Analysis (Latest Audited Year Only)</div>
-            <div class="tag">Bank/model from bankRulesFull</div>
-        </div>
-        <div class="bd">
-            <div id="sectionH"></div>
+        <div class="card">
+            <div class="card-header section-title">
+                <div class="card-title">Section H — Bank DSCR Analysis (Latest Audited Year Only)</div>
+                <div class="small">Bank/model from bankRulesFull</div>
+            </div>
+            <div class="card-body">
+                <div id="sectionHBody"></div>
+            </div>
         </div>
     </div>
 
     <div style="height:18px"></div>
-    <div class="note">
-        Generated dashboards are self-contained HTML. Local drafts are stored in <b>localStorage</b>.
-    </div>
+    <div class="note">Generated dashboards are self-contained HTML. Local drafts are stored in <b>localStorage</b>.</div>
 </div>
 
 <script>
-    // [PART A: DATA INJECTION]
+  // [PART A: DATA INJECTION]
