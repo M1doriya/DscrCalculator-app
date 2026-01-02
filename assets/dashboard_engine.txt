@@ -1,647 +1,646 @@
-function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, function (m) {
-    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m];
-  });
+function escapeHtml(str){
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function fmt(n) {
-  if (n === null || n === undefined || n === "") return "-";
-  const num = Number(n);
-  if (Number.isNaN(num)) return "-";
-  return num.toLocaleString(undefined, { maximumFractionDigits: 0 });
+function fmt(n){
+    if(n===null||n===undefined||n==="") return "-";
+    const num = Number(n);
+    if(Number.isNaN(num)) return "-";
+    return num.toLocaleString(undefined,{maximumFractionDigits:0});
 }
 
-function fmt2(n) {
-  if (n === null || n === undefined || n === "") return "-";
-  const num = Number(n);
-  if (Number.isNaN(num)) return "-";
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmt2(n){
+    if(n===null||n===undefined||n==="") return "-";
+    const num = Number(n);
+    if(Number.isNaN(num)) return "-";
+    return num.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-function getLatestAuditedYear() {
-  const years = (auditedYearsDetected || []).slice().sort((a, b) => a - b);
-  return years.length ? years[years.length - 1] : null;
+function getLatestAuditedYear(){
+    const years = (auditedYearsDetected||[]).slice().sort((a,b)=>a-b);
+    return years.length ? years[years.length-1] : null;
 }
 
 // -----------------------------
 // Draft storage
 // -----------------------------
-const DRAFT_KEY = "dscr_dashboard_draft_v3";
+const DRAFT_KEY = "dscr_fixed_v3_draft";
 
-function saveDraft() {
-  const draft = {
-    historicalData,
-    companyFacilities,
-    directorFacilities,
-    proposedFacilities,
-    sectionBState,
-    bankRulesFull,
-    _ts: Date.now()
-  };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+function saveDraft(){
+    const draft = {
+        historicalData,
+        companyFacilities,
+        directorFacilities,
+        proposedFacilities,
+        sectionBState,
+        bankRulesFull,
+        bankRules,
+        _ts: Date.now()
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
 
-function loadDraft() {
-  const raw = localStorage.getItem(DRAFT_KEY);
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch (e) { return null; }
+function loadDraft(){
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    try { return JSON.parse(raw); } catch(e){ return null; }
 }
 
-function resetDraft() {
-  localStorage.removeItem(DRAFT_KEY);
-  location.reload();
+function resetDraft(){
+    localStorage.removeItem(DRAFT_KEY);
+    location.reload();
 }
 
 // -----------------------------
-// Scenario presets (Section B)
+// Scenarios (kept simple; your dscr_fixed_v3 may have more presets—add here if needed)
 // -----------------------------
 const SCENARIOS = [
-  { id: "base", name: "Base Case", inputs: { salesGrowth: 0.10, ebitdaMargin: 0.10, arDays: 45, apDays: 30, invDays: 30 } },
-  { id: "bull", name: "Bull Case", inputs: { salesGrowth: 0.20, ebitdaMargin: 0.12, arDays: 40, apDays: 35, invDays: 25 } },
-  { id: "bear", name: "Bear Case", inputs: { salesGrowth: 0.05, ebitdaMargin: 0.08, arDays: 55, apDays: 25, invDays: 35 } }
+    { id:"base", name:"Base Case", inputs:{ salesGrowth:0.10, ebitdaMargin:0.10, arDays:45, apDays:30, invDays:30 } },
+    { id:"bull", name:"Bull Case", inputs:{ salesGrowth:0.20, ebitdaMargin:0.12, arDays:40, apDays:35, invDays:25 } },
+    { id:"bear", name:"Bear Case", inputs:{ salesGrowth:0.05, ebitdaMargin:0.08, arDays:55, apDays:25, invDays:35 } }
 ];
 
-// Section B state (editable inputs)
+// -----------------------------
+// Section B state (editable)
+// -----------------------------
 const sectionBState = {
-  projectionSales: 0,
-  salesGrowth: 0.10,
-  ebitdaMargin: 0.10,
-  arDays: 45,
-  apDays: 30,
-  invDays: 30
+    projectionSales: 0,
+    salesGrowth: 0.10,
+    ebitdaMargin: 0.10,
+    arDays: 45,
+    apDays: 30,
+    invDays: 30
 };
 
 // Proposed facilities (Section F)
 const proposedFacilities = [];
 
 // -----------------------------
-// Section builders
+// Core computations
 // -----------------------------
-function buildSectionA() {
-  const years = (auditedYearsDetected || []).slice().sort((a, b) => a - b);
-  const container = document.getElementById("sectionA");
+function computeProjection(){
+    const base = Number(sectionBState.projectionSales||0);
+    const sg = Number(sectionBState.salesGrowth||0);
+    const em = Number(sectionBState.ebitdaMargin||0);
 
-  if (!container) return;
+    const sales = base*(1+sg);
+    const ebitda = sales*em;
+    return { sales, ebitda };
+}
 
-  if (!years.length) {
-    container.innerHTML = '<div class="note warn">No audited years detected.</div>';
-    return;
-  }
+function computeWCR(){
+    const p = computeProjection();
+    const sales = p.sales;
 
-  const metrics = [
-    ["Revenue", "revenue"],
-    ["COGS", "cogs"],
-    ["Other Income", "otherIncome"],
-    ["Opex (Admin)", "opexAdmin"],
-    ["Opex (Other)", "opexOther"],
-    ["Opex (Total)", "opex"],
-    ["Finance Costs", "financeCosts"],
-    ["Depreciation", "depreciation"],
-    ["Tax", "tax"],
-    ["Net Profit", "netProfit"],
-    ["EBITDA", "ebitda"]
-  ];
+    const ar = (sales/365) * Number(sectionBState.arDays||0);
+    const ap = (sales/365) * Number(sectionBState.apDays||0);
+    const inv = (sales/365) * Number(sectionBState.invDays||0);
+    const wcr = ar + inv - ap;
 
-  let html = '<table class="table"><thead><tr><th>Item</th>';
-  for (const y of years) html += `<th class="num">FY${y}</th>`;
-  html += "</tr></thead><tbody>";
+    return { ar, ap, inv, wcr };
+}
 
-  for (const [label, key] of metrics) {
-    html += `<tr><td>${escapeHtml(label)}</td>`;
-    for (const y of years) {
-      const row = historicalData[`fy${y}`] || {};
-      html += `<td class="num">${fmt(row[key])}</td>`;
+function sumMonthly(rows){
+    return (rows||[]).reduce((a,r)=>a+Number(r.monthly||0),0);
+}
+
+function sumOutstanding(rows){
+    return (rows||[]).reduce((a,r)=>a+Number(r.outstanding||0),0);
+}
+
+function getBankList(){
+    const banks = bankRulesFull?.banks ? Object.keys(bankRulesFull.banks) : [];
+    return banks.sort();
+}
+
+function getModelsForBank(bank){
+    const b = bankRulesFull?.banks?.[bank];
+    const models = b?.models || {};
+    return {
+        financial: !!models.financial?.enabled,
+        non_financial: !!models.non_financial?.enabled
+    };
+}
+
+function getFormulaText(bank, modelKey){
+    return bankRulesFull?.banks?.[bank]?.models?.[modelKey]?.formula_text || "";
+}
+
+function computeDscrLatestAudited(){
+    const latest = getLatestAuditedYear();
+    if(!latest) return { dscr:null, ebitda:0, debtServiceAnnual:0 };
+
+    const ebitda = Number((historicalData[`fy${latest}`]||{}).ebitda||0);
+
+    const exMo = sumMonthly(companyFacilities);
+    const pfMo = sumMonthly(proposedFacilities);
+
+    const debtServiceAnnual = (exMo + pfMo) * 12;
+    const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
+
+    return { dscr, ebitda, debtServiceAnnual, latest };
+}
+
+// -----------------------------
+// UI: Gauge
+// -----------------------------
+function updateGauge(dscr){
+    const g = document.getElementById("dscrGauge");
+    if(!g) return;
+
+    const val = (dscr===null || dscr===undefined) ? null : Number(dscr);
+    if(val===null || Number.isNaN(val)){
+        g.style.background = "conic-gradient(var(--primary) 0deg, #e2e8f0 0deg)";
+        return;
     }
-    html += "</tr>";
-  }
 
-  html += "</tbody></table>";
-  container.innerHTML = html;
-
-  const latest = getLatestAuditedYear();
-  const latestEl = document.getElementById("latestYear");
-  if (latestEl) latestEl.innerText = latest ? `FY${latest}` : "-";
-
-  // Seed Section B projectionSales from latest audited revenue
-  if (latest && (!sectionBState.projectionSales || sectionBState.projectionSales <= 0)) {
-    const latestRev = Number((historicalData[`fy${latest}`] || {}).revenue || 0);
-    sectionBState.projectionSales = latestRev;
-  }
+    // Map DSCR 0..2.0 to 0..360 degrees (cap)
+    const capped = Math.max(0, Math.min(2.0, val));
+    const deg = (capped/2.0) * 360;
+    g.style.background = `conic-gradient(var(--primary) ${deg}deg, #e2e8f0 ${deg}deg)`;
 }
 
-function buildSectionB() {
-  const container = document.getElementById("sectionB");
-  if (!container) return;
+// -----------------------------
+// Section renderers (target dscr_fixed_v3 IDs)
+// -----------------------------
+function buildSectionA(){
+    const container = document.getElementById("sectionABody");
+    if(!container) return;
 
-  const html = `
-    <table class="table">
-      <thead><tr><th>Input</th><th class="num">Value</th></tr></thead>
-      <tbody>
-        <tr><td>Base sales (RM)</td><td class="num"><input id="b_sales" type="number" value="${sectionBState.projectionSales}"></td></tr>
-        <tr><td>Sales growth</td><td class="num"><input id="b_sg" type="number" step="0.01" value="${sectionBState.salesGrowth}"></td></tr>
-        <tr><td>EBITDA margin</td><td class="num"><input id="b_em" type="number" step="0.01" value="${sectionBState.ebitdaMargin}"></td></tr>
-        <tr><td>AR days</td><td class="num"><input id="b_ar" type="number" value="${sectionBState.arDays}"></td></tr>
-        <tr><td>AP days</td><td class="num"><input id="b_ap" type="number" value="${sectionBState.apDays}"></td></tr>
-        <tr><td>Inventory days</td><td class="num"><input id="b_inv" type="number" value="${sectionBState.invDays}"></td></tr>
-      </tbody>
-    </table>
-    <div class="note" style="margin-top:10px">Changes here recompute Sections C/D/G and update Section H summary.</div>
-  `;
-  container.innerHTML = html;
+    const years = (auditedYearsDetected||[]).slice().sort((a,b)=>a-b);
+    if(!years.length){
+        container.innerHTML = '<div class="note warn">No audited years detected.</div>';
+        return;
+    }
 
-  const bind = (id, key, cast = Number) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", () => {
-      sectionBState[key] = cast(el.value);
-      recalculateAll(true);
-    });
-  };
+    const metrics = [
+        ["Revenue","revenue"],
+        ["COGS","cogs"],
+        ["Other Income","otherIncome"],
+        ["Opex (Admin)","opexAdmin"],
+        ["Opex (Other)","opexOther"],
+        ["Opex (Total)","opex"],
+        ["Finance Costs","financeCosts"],
+        ["Depreciation","depreciation"],
+        ["Tax","tax"],
+        ["Net Profit","netProfit"],
+        ["EBITDA","ebitda"]
+    ];
 
-  bind("b_sales", "projectionSales");
-  bind("b_sg", "salesGrowth");
-  bind("b_em", "ebitdaMargin");
-  bind("b_ar", "arDays");
-  bind("b_ap", "apDays");
-  bind("b_inv", "invDays");
+    let html = '<table class="table"><thead><tr><th>Item</th>';
+    for(const y of years) html += `<th class="num">FY${y}</th>`;
+    html += '</tr></thead><tbody>';
+
+    for(const [label,key] of metrics){
+        html += `<tr><td>${escapeHtml(label)}</td>`;
+        for(const y of years){
+            const row = historicalData[`fy${y}`] || {};
+            html += `<td class="num">${fmt(row[key])}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    const latest = getLatestAuditedYear();
+    const latestEl = document.getElementById("latestYear");
+    if(latestEl) latestEl.innerText = latest ? `FY${latest}` : "-";
+
+    // Seed B from latest audited revenue (only if not set)
+    if(latest && (!sectionBState.projectionSales || sectionBState.projectionSales<=0)){
+        sectionBState.projectionSales = Number((historicalData[`fy${latest}`]||{}).revenue || 0);
+    }
 }
 
-function computeProjection() {
-  const base = Number(sectionBState.projectionSales || 0);
-  const sg = Number(sectionBState.salesGrowth || 0);
-  const em = Number(sectionBState.ebitdaMargin || 0);
+function buildSectionB(){
+    const container = document.getElementById("sectionBBody");
+    if(!container) return;
 
-  const sales = base * (1 + sg);
-  const ebitda = sales * em;
-  return { sales, ebitda };
-}
+    container.innerHTML = `
+      <table class="table">
+        <thead><tr><th>Input</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          <tr><td>Base sales (RM)</td><td class="num"><input id="b_sales" type="number" value="${sectionBState.projectionSales}"></td></tr>
+          <tr><td>Sales growth</td><td class="num"><input id="b_sg" type="number" step="0.01" value="${sectionBState.salesGrowth}"></td></tr>
+          <tr><td>EBITDA margin</td><td class="num"><input id="b_em" type="number" step="0.01" value="${sectionBState.ebitdaMargin}"></td></tr>
+          <tr><td>AR days</td><td class="num"><input id="b_ar" type="number" value="${sectionBState.arDays}"></td></tr>
+          <tr><td>AP days</td><td class="num"><input id="b_ap" type="number" value="${sectionBState.apDays}"></td></tr>
+          <tr><td>Inventory days</td><td class="num"><input id="b_inv" type="number" value="${sectionBState.invDays}"></td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:10px">Changes here recompute Sections C/D/G/H and the DSCR gauge.</div>
+    `;
 
-function buildSectionC() {
-  const container = document.getElementById("sectionC");
-  if (!container) return;
-
-  const p = computeProjection();
-  container.innerHTML = `
-    <table class="table">
-      <thead><tr><th>Item</th><th class="num">Projection</th></tr></thead>
-      <tbody>
-        <tr><td>Projected Sales (RM)</td><td class="num">${fmt(p.sales)}</td></tr>
-        <tr><td>Projected EBITDA (RM)</td><td class="num">${fmt(p.ebitda)}</td></tr>
-      </tbody>
-    </table>
-  `;
-}
-
-function computeWCR() {
-  const p = computeProjection();
-  const sales = p.sales;
-
-  const arDays = Number(sectionBState.arDays || 0);
-  const apDays = Number(sectionBState.apDays || 0);
-  const invDays = Number(sectionBState.invDays || 0);
-
-  const ar = (sales / 365) * arDays;
-  const ap = (sales / 365) * apDays;
-  const inv = (sales / 365) * invDays;
-  const wcr = ar + inv - ap;
-
-  return { ar, ap, inv, wcr };
-}
-
-function buildSectionD() {
-  const container = document.getElementById("sectionD");
-  if (!container) return;
-
-  const w = computeWCR();
-  container.innerHTML = `
-    <table class="table">
-      <thead><tr><th>Component</th><th class="num">Amount (RM)</th></tr></thead>
-      <tbody>
-        <tr><td>Accounts Receivable</td><td class="num">${fmt(w.ar)}</td></tr>
-        <tr><td>Inventory</td><td class="num">${fmt(w.inv)}</td></tr>
-        <tr><td>Accounts Payable</td><td class="num">${fmt(w.ap)}</td></tr>
-        <tr><td><b>WCR</b></td><td class="num"><b>${fmt(w.wcr)}</b></td></tr>
-      </tbody>
-    </table>
-  `;
-}
-
-function buildSectionE() {
-  const container = document.getElementById("sectionE");
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="inline" style="margin-bottom:10px">
-      <button id="btnAddExisting">Add Existing Commitment</button>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Type</th><th>Bank</th>
-          <th class="num">Limit</th>
-          <th class="num">Outstanding</th>
-          <th class="num">Monthly</th>
-          <th class="center">Action</th>
-        </tr>
-      </thead>
-      <tbody id="existingBody"></tbody>
-    </table>
-  `;
-
-  const body = document.getElementById("existingBody");
-
-  function render() {
-    body.innerHTML = "";
-    (companyFacilities || []).forEach((r, i) => {
-      body.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td><input type="text" id="ex_type_${i}" value="${escapeHtml(r.type || "")}"></td>
-          <td><input type="text" id="ex_bank_${i}" value="${escapeHtml(r.bank || "")}"></td>
-          <td class="num"><input type="number" id="ex_lim_${i}" value="${Number(r.limit || 0)}"></td>
-          <td class="num"><input type="number" id="ex_out_${i}" value="${Number(r.outstanding || 0)}"></td>
-          <td class="num"><input type="number" id="ex_mo_${i}" value="${Number(r.monthly || 0)}"></td>
-          <td class="center"><button id="ex_del_${i}">Remove</button></td>
-        </tr>
-      `);
-    });
-
-    (companyFacilities || []).forEach((r, i) => {
-      const bind = (id, key, cast = (v) => v) => {
+    const bind=(id,key,cast=Number)=>{
         const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("input", () => {
-          companyFacilities[i][key] = cast(el.value);
-          recalculateAll(false);
+        if(!el) return;
+        el.addEventListener("input", ()=>{
+            sectionBState[key]=cast(el.value);
+            recalculateAll(true);
         });
-      };
+    };
+    bind("b_sales","projectionSales");
+    bind("b_sg","salesGrowth");
+    bind("b_em","ebitdaMargin");
+    bind("b_ar","arDays");
+    bind("b_ap","apDays");
+    bind("b_inv","invDays");
+}
 
-      bind(`ex_type_${i}`, "type", (v) => v);
-      bind(`ex_bank_${i}`, "bank", (v) => v);
-      bind(`ex_lim_${i}`, "limit", Number);
-      bind(`ex_out_${i}`, "outstanding", Number);
-      bind(`ex_mo_${i}`, "monthly", Number);
+function buildSectionC(){
+    const container = document.getElementById("sectionCBody");
+    if(!container) return;
 
-      const del = document.getElementById(`ex_del_${i}`);
-      if (del) {
-        del.addEventListener("click", () => {
-          companyFacilities.splice(i, 1);
-          render();
-          recalculateAll(false);
+    const p = computeProjection();
+    container.innerHTML = `
+      <table class="table">
+        <thead><tr><th>Item</th><th class="num">Projection</th></tr></thead>
+        <tbody>
+          <tr><td>Projected Sales (RM)</td><td class="num">${fmt(p.sales)}</td></tr>
+          <tr><td>Projected EBITDA (RM)</td><td class="num">${fmt(p.ebitda)}</td></tr>
+        </tbody>
+      </table>
+    `;
+}
+
+function buildSectionD(){
+    const container = document.getElementById("sectionDBody");
+    if(!container) return;
+
+    const w = computeWCR();
+    container.innerHTML = `
+      <table class="table">
+        <thead><tr><th>Component</th><th class="num">Amount (RM)</th></tr></thead>
+        <tbody>
+          <tr><td>Accounts Receivable</td><td class="num">${fmt(w.ar)}</td></tr>
+          <tr><td>Inventory</td><td class="num">${fmt(w.inv)}</td></tr>
+          <tr><td>Accounts Payable</td><td class="num">${fmt(w.ap)}</td></tr>
+          <tr><td><b>WCR</b></td><td class="num"><b>${fmt(w.wcr)}</b></td></tr>
+        </tbody>
+      </table>
+    `;
+}
+
+function buildSectionE(){
+    const container = document.getElementById("sectionEBody");
+    if(!container) return;
+
+    container.innerHTML = `
+      <div class="inline" style="margin-bottom:10px">
+        <button id="btnAddExisting">Add Existing Commitment</button>
+      </div>
+      <table class="table">
+        <thead>
+          <tr><th>Type</th><th>Bank</th><th class="num">Limit</th><th class="num">Outstanding</th><th class="num">Monthly</th><th class="center">Action</th></tr>
+        </thead>
+        <tbody id="companyFacilitiesBody"></tbody>
+      </table>
+    `;
+
+    const body = document.getElementById("companyFacilitiesBody");
+
+    function render(){
+        body.innerHTML="";
+        (companyFacilities||[]).forEach((r,i)=>{
+            body.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td><input type="text" id="ex_type_${i}" value="${escapeHtml(r.type||"")}"></td>
+                <td><input type="text" id="ex_bank_${i}" value="${escapeHtml(r.bank||"")}"></td>
+                <td class="num"><input type="number" id="ex_lim_${i}" value="${Number(r.limit||0)}"></td>
+                <td class="num"><input type="number" id="ex_out_${i}" value="${Number(r.outstanding||0)}"></td>
+                <td class="num"><input type="number" id="ex_mo_${i}" value="${Number(r.monthly||0)}"></td>
+                <td class="center"><button id="ex_del_${i}">Remove</button></td>
+              </tr>
+            `);
         });
-      }
-    });
-  }
 
-  const addBtn = document.getElementById("btnAddExisting");
-  if (addBtn) {
-    addBtn.addEventListener("click", () => {
-      companyFacilities.push({ type: "", bank: "", limit: 0, outstanding: 0, monthly: 0 });
-      render();
-      recalculateAll(false);
-    });
-  }
+        (companyFacilities||[]).forEach((r,i)=>{
+            const bind=(id,key,cast=v=>v)=>{
+                const el=document.getElementById(id);
+                if(!el) return;
+                el.addEventListener("input",()=>{
+                    companyFacilities[i][key]=cast(el.value);
+                    recalculateAll(false);
+                });
+            };
+            bind(`ex_type_${i}`,"type",v=>v);
+            bind(`ex_bank_${i}`,"bank",v=>v);
+            bind(`ex_lim_${i}`,"limit",Number);
+            bind(`ex_out_${i}`,"outstanding",Number);
+            bind(`ex_mo_${i}`,"monthly",Number);
 
-  render();
-}
-
-function buildSectionF() {
-  const container = document.getElementById("sectionF");
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="inline" style="margin-bottom:10px">
-      <button id="btnAddProposed">Add Proposed Facility</button>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Type</th><th>Bank</th>
-          <th class="num">Limit</th>
-          <th class="num">Outstanding</th>
-          <th class="num">Monthly</th>
-          <th class="center">Action</th>
-        </tr>
-      </thead>
-      <tbody id="propBody"></tbody>
-    </table>
-  `;
-
-  const body = document.getElementById("propBody");
-
-  function render() {
-    body.innerHTML = "";
-    proposedFacilities.forEach((r, i) => {
-      body.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td><input type="text" id="pf_type_${i}" value="${escapeHtml(r.type || "")}"></td>
-          <td><input type="text" id="pf_bank_${i}" value="${escapeHtml(r.bank || "")}"></td>
-          <td class="num"><input type="number" id="pf_lim_${i}" value="${Number(r.limit || 0)}"></td>
-          <td class="num"><input type="number" id="pf_out_${i}" value="${Number(r.outstanding || 0)}"></td>
-          <td class="num"><input type="number" id="pf_mo_${i}" value="${Number(r.monthly || 0)}"></td>
-          <td class="center"><button id="pf_del_${i}">Remove</button></td>
-        </tr>
-      `);
-    });
-
-    proposedFacilities.forEach((r, i) => {
-      const bind = (id, key, cast = (v) => v) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("input", () => {
-          proposedFacilities[i][key] = cast(el.value);
-          recalculateAll(false);
+            const del=document.getElementById(`ex_del_${i}`);
+            if(del){
+                del.addEventListener("click",()=>{
+                    companyFacilities.splice(i,1);
+                    render();
+                    recalculateAll(false);
+                });
+            }
         });
-      };
+    }
 
-      bind(`pf_type_${i}`, "type", (v) => v);
-      bind(`pf_bank_${i}`, "bank", (v) => v);
-      bind(`pf_lim_${i}`, "limit", Number);
-      bind(`pf_out_${i}`, "outstanding", Number);
-      bind(`pf_mo_${i}`, "monthly", Number);
-
-      const del = document.getElementById(`pf_del_${i}`);
-      if (del) {
-        del.addEventListener("click", () => {
-          proposedFacilities.splice(i, 1);
-          render();
-          recalculateAll(false);
+    const addBtn=document.getElementById("btnAddExisting");
+    if(addBtn){
+        addBtn.addEventListener("click",()=>{
+            companyFacilities.push({type:"",bank:"",limit:0,outstanding:0,monthly:0});
+            render();
+            recalculateAll(false);
         });
-      }
-    });
-  }
+    }
 
-  const addBtn = document.getElementById("btnAddProposed");
-  if (addBtn) {
-    addBtn.addEventListener("click", () => {
-      proposedFacilities.push({ type: "", bank: "", limit: 0, outstanding: 0, monthly: 0 });
-      render();
-      recalculateAll(false);
-    });
-  }
-
-  render();
+    render();
 }
 
-function buildSectionG() {
-  const container = document.getElementById("sectionG");
-  if (!container) return;
+function buildSectionF(){
+    const container = document.getElementById("sectionFBody");
+    if(!container) return;
 
-  const sumMonthly = (rows) => (rows || []).reduce((a, r) => a + Number(r.monthly || 0), 0);
-  const sumOutstanding = (rows) => (rows || []).reduce((a, r) => a + Number(r.outstanding || 0), 0);
+    container.innerHTML = `
+      <div class="inline" style="margin-bottom:10px">
+        <button id="btnAddProposed">Add Proposed Facility</button>
+      </div>
+      <table class="table">
+        <thead>
+          <tr><th>Type</th><th>Bank</th><th class="num">Limit</th><th class="num">Outstanding</th><th class="num">Monthly</th><th class="center">Action</th></tr>
+        </thead>
+        <tbody id="newFacilitiesBody"></tbody>
+      </table>
+    `;
 
-  const exMo = sumMonthly(companyFacilities);
-  const pfMo = sumMonthly(proposedFacilities);
-  const totMo = exMo + pfMo;
+    const body = document.getElementById("newFacilitiesBody");
 
-  const exOut = sumOutstanding(companyFacilities);
-  const pfOut = sumOutstanding(proposedFacilities);
-  const totOut = exOut + pfOut;
+    function render(){
+        body.innerHTML="";
+        proposedFacilities.forEach((r,i)=>{
+            body.insertAdjacentHTML("beforeend", `
+              <tr>
+                <td><input type="text" id="pf_type_${i}" value="${escapeHtml(r.type||"")}"></td>
+                <td><input type="text" id="pf_bank_${i}" value="${escapeHtml(r.bank||"")}"></td>
+                <td class="num"><input type="number" id="pf_lim_${i}" value="${Number(r.limit||0)}"></td>
+                <td class="num"><input type="number" id="pf_out_${i}" value="${Number(r.outstanding||0)}"></td>
+                <td class="num"><input type="number" id="pf_mo_${i}" value="${Number(r.monthly||0)}"></td>
+                <td class="center"><button id="pf_del_${i}">Remove</button></td>
+              </tr>
+            `);
+        });
 
-  container.innerHTML = `
-    <table class="table">
-      <thead><tr><th>Item</th><th class="num">Existing</th><th class="num">Proposed</th><th class="num">Total</th></tr></thead>
-      <tbody>
-        <tr><td>Monthly Commitments (RM)</td><td class="num">${fmt(exMo)}</td><td class="num">${fmt(pfMo)}</td><td class="num"><b>${fmt(totMo)}</b></td></tr>
-        <tr><td>Outstanding (RM)</td><td class="num">${fmt(exOut)}</td><td class="num">${fmt(pfOut)}</td><td class="num"><b>${fmt(totOut)}</b></td></tr>
-      </tbody>
-    </table>
-  `;
+        proposedFacilities.forEach((r,i)=>{
+            const bind=(id,key,cast=v=>v)=>{
+                const el=document.getElementById(id);
+                if(!el) return;
+                el.addEventListener("input",()=>{
+                    proposedFacilities[i][key]=cast(el.value);
+                    recalculateAll(false);
+                });
+            };
+            bind(`pf_type_${i}`,"type",v=>v);
+            bind(`pf_bank_${i}`,"bank",v=>v);
+            bind(`pf_lim_${i}`,"limit",Number);
+            bind(`pf_out_${i}`,"outstanding",Number);
+            bind(`pf_mo_${i}`,"monthly",Number);
 
-  const sumDebt = document.getElementById("sumDebtService");
-  if (sumDebt) sumDebt.innerText = fmt(totMo * 12); // annualized
+            const del=document.getElementById(`pf_del_${i}`);
+            if(del){
+                del.addEventListener("click",()=>{
+                    proposedFacilities.splice(i,1);
+                    render();
+                    recalculateAll(false);
+                });
+            }
+        });
+    }
+
+    const addBtn=document.getElementById("btnAddProposed");
+    if(addBtn){
+        addBtn.addEventListener("click",()=>{
+            proposedFacilities.push({type:"",bank:"",limit:0,outstanding:0,monthly:0});
+            render();
+            recalculateAll(false);
+        });
+    }
+
+    render();
 }
 
-function getBankList() {
-  const banks = (bankRulesFull && bankRulesFull.banks) ? Object.keys(bankRulesFull.banks) : [];
-  return banks.sort();
+function buildSectionG(){
+    const container = document.getElementById("sectionGBody");
+    if(!container) return;
+
+    const exMo = sumMonthly(companyFacilities);
+    const pfMo = sumMonthly(proposedFacilities);
+    const totMo = exMo + pfMo;
+
+    const exOut = sumOutstanding(companyFacilities);
+    const pfOut = sumOutstanding(proposedFacilities);
+    const totOut = exOut + pfOut;
+
+    container.innerHTML = `
+      <table class="table">
+        <thead><tr><th>Item</th><th class="num">Existing</th><th class="num">Proposed</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          <tr><td>Monthly Commitments (RM)</td><td class="num">${fmt(exMo)}</td><td class="num">${fmt(pfMo)}</td><td class="num"><b>${fmt(totMo)}</b></td></tr>
+          <tr><td>Outstanding (RM)</td><td class="num">${fmt(exOut)}</td><td class="num">${fmt(pfOut)}</td><td class="num"><b>${fmt(totOut)}</b></td></tr>
+        </tbody>
+      </table>
+    `;
+
+    const sumDebt = document.getElementById("sumDebtService");
+    if(sumDebt) sumDebt.innerText = fmt(totMo * 12);
 }
 
-function getModelsForBank(bank) {
-  const b = bankRulesFull?.banks?.[bank];
-  const models = b?.models || {};
-  return {
-    financial: !!models.financial?.enabled,
-    non_financial: !!models.non_financial?.enabled
-  };
-}
+function buildSectionH(){
+    const container = document.getElementById("sectionHBody");
+    if(!container) return;
 
-function getFormulaText(bank, modelKey) {
-  const b = bankRulesFull?.banks?.[bank];
-  const m = b?.models?.[modelKey];
-  return m?.formula_text || "";
-}
+    const banks = getBankList();
+    if(!banks.length){
+        container.innerHTML = '<div class="note warn">No bank rules found in bankRulesFull.</div>';
+        return;
+    }
 
-function computeDscrForLatestAudited() {
-  const latest = getLatestAuditedYear();
-  if (!latest) return { dscr: null, ebitda: 0, debtServiceAnnual: 0 };
+    if(!buildSectionH.state){
+        buildSectionH.state = { bank:banks[0], model:"financial" };
+    }
+    const state = buildSectionH.state;
 
-  const row = historicalData[`fy${latest}`] || {};
-  const ebitda = Number(row.ebitda || 0);
+    const models = getModelsForBank(state.bank);
+    if(state.model==="financial" && !models.financial) state.model = models.non_financial ? "non_financial" : "financial";
+    if(state.model==="non_financial" && !models.non_financial) state.model = models.financial ? "financial" : "non_financial";
 
-  const sumMonthly = (rows) => (rows || []).reduce((a, r) => a + Number(r.monthly || 0), 0);
-  const exMo = sumMonthly(companyFacilities);
-  const pfMo = sumMonthly(proposedFacilities);
-  const debtServiceAnnual = (exMo + pfMo) * 12;
+    const { dscr, ebitda, debtServiceAnnual, latest } = computeDscrLatestAudited();
+    const formulaText = getFormulaText(state.bank, state.model);
+    const latestLabel = latest ? `FY${latest}` : "-";
 
-  const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
-  return { dscr, ebitda, debtServiceAnnual };
-}
-
-function buildSectionH() {
-  const container = document.getElementById("sectionH");
-  if (!container) return;
-
-  const banks = getBankList();
-  if (!banks.length) {
-    container.innerHTML = '<div class="note warn">No bank rules found in bankRulesFull.</div>';
-    return;
-  }
-
-  if (!buildSectionH.state) {
-    buildSectionH.state = { bank: banks[0], model: "financial" };
-  }
-  const state = buildSectionH.state;
-
-  const models = getModelsForBank(state.bank);
-  if (state.model === "financial" && !models.financial) state.model = models.non_financial ? "non_financial" : "financial";
-  if (state.model === "non_financial" && !models.non_financial) state.model = models.financial ? "financial" : "non_financial";
-
-  const { dscr, ebitda, debtServiceAnnual } = computeDscrForLatestAudited();
-  const formulaText = getFormulaText(state.bank, state.model);
-
-  const latest = getLatestAuditedYear();
-  const latestLabel = latest ? `FY${latest}` : "-";
-
-  container.innerHTML = `
-    <div class="inline" style="margin-bottom:10px">
-      <div style="min-width:220px">
-        <div class="note" style="margin-bottom:6px">Bank</div>
-        <select id="h_bank">
-          ${banks.map(b => `<option ${b === state.bank ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
-        </select>
+    container.innerHTML = `
+      <div class="inline" style="margin-bottom:10px">
+        <div style="min-width:220px">
+          <div class="small" style="margin-bottom:6px">Bank</div>
+          <select id="h_bank">${banks.map(b=>`<option ${b===state.bank?"selected":""}>${escapeHtml(b)}</option>`).join("")}</select>
+        </div>
+        <div style="min-width:220px">
+          <div class="small" style="margin-bottom:6px">Model</div>
+          <select id="h_model">
+            ${models.financial ? `<option value="financial" ${state.model==="financial"?"selected":""}>financial</option>` : ""}
+            ${models.non_financial ? `<option value="non_financial" ${state.model==="non_financial"?"selected":""}>non_financial</option>` : ""}
+          </select>
+        </div>
       </div>
 
-      <div style="min-width:220px">
-        <div class="note" style="margin-bottom:6px">Model</div>
-        <select id="h_model">
-          ${models.financial ? `<option value="financial" ${state.model === "financial" ? "selected" : ""}>financial</option>` : ""}
-          ${models.non_financial ? `<option value="non_financial" ${state.model === "non_financial" ? "selected" : ""}>non_financial</option>` : ""}
-        </select>
-      </div>
-    </div>
+      <table class="table">
+        <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          <tr><td>Audited year used</td><td class="num">${escapeHtml(latestLabel)}</td></tr>
+          <tr><td>EBITDA (audited)</td><td class="num">${fmt(ebitda)}</td></tr>
+          <tr><td>Debt service (annual)</td><td class="num">${fmt(debtServiceAnnual)}</td></tr>
+          <tr><td><b>DSCR</b></td><td class="num"><b>${dscr===null?"-":fmt2(dscr)}</b></td></tr>
+        </tbody>
+      </table>
 
-    <table class="table">
-      <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
-      <tbody>
-        <tr><td>Audited year used</td><td class="num">${escapeHtml(latestLabel)}</td></tr>
-        <tr><td>EBITDA (audited)</td><td class="num">${fmt(ebitda)}</td></tr>
-        <tr><td>Debt service (annual)</td><td class="num">${fmt(debtServiceAnnual)}</td></tr>
-        <tr><td><b>DSCR</b></td><td class="num"><b>${dscr === null ? "-" : fmt2(dscr)}</b></td></tr>
-      </tbody>
-    </table>
+      <div class="formula" style="margin-top:10px">${escapeHtml(formulaText)}</div>
+    `;
 
-    <div class="formula" style="margin-top:10px">${escapeHtml(formulaText)}</div>
-  `;
+    const hBank=document.getElementById("h_bank");
+    if(hBank){
+        hBank.addEventListener("change",(e)=>{
+            state.bank=e.target.value;
+            buildSectionH();
+            recalculateSummary();
+        });
+    }
+    const hModel=document.getElementById("h_model");
+    if(hModel){
+        hModel.addEventListener("change",(e)=>{
+            state.model=e.target.value;
+            buildSectionH();
+            recalculateSummary();
+        });
+    }
 
-  const hBank = document.getElementById("h_bank");
-  if (hBank) {
-    hBank.addEventListener("change", (e) => {
-      state.bank = e.target.value;
-      buildSectionH();
-      recalculateSummary();
-    });
-  }
-
-  const hModel = document.getElementById("h_model");
-  if (hModel) {
-    hModel.addEventListener("change", (e) => {
-      state.model = e.target.value;
-      buildSectionH();
-      recalculateSummary();
-    });
-  }
-
-  const sumModel = document.getElementById("sumBankModel");
-  if (sumModel) sumModel.innerText = `${state.bank} / ${state.model}`;
+    const sumModel=document.getElementById("sumBankModel");
+    if(sumModel) sumModel.innerText = `${state.bank} / ${state.model}`;
 }
 
-function recalculateSummary() {
-  const latest = getLatestAuditedYear();
-  const row = latest ? (historicalData[`fy${latest}`] || {}) : {};
-  const ebitda = Number(row.ebitda || 0);
+function recalculateSummary(){
+    const { dscr, ebitda } = computeDscrLatestAudited();
 
-  const sumE = document.getElementById("sumEbitda");
-  if (sumE) sumE.innerText = fmt(ebitda);
+    const sumE = document.getElementById("sumEbitda");
+    if(sumE) sumE.innerText = fmt(ebitda);
 
-  const sumDebt = document.getElementById("sumDebtService");
-  const debtServiceAnnual = sumDebt ? (Number(String(sumDebt.innerText).replace(/,/g, "")) || 0) : 0;
+    const sumD = document.getElementById("sumDscr");
+    if(sumD) sumD.innerText = (dscr===null ? "-" : fmt2(dscr));
 
-  const dscr = debtServiceAnnual > 0 ? (ebitda / debtServiceAnnual) : null;
-  const sumD = document.getElementById("sumDscr");
-  if (sumD) sumD.innerText = dscr === null ? "-" : fmt2(dscr);
+    updateGauge(dscr);
 }
 
-function recalculateAll(rebuildTables = true) {
-  if (rebuildTables) {
+function recalculateAll(rebuildTables=true){
+    if(rebuildTables){
+        buildSectionC();
+        buildSectionD();
+        buildSectionG();
+        buildSectionH();
+    }else{
+        buildSectionG();
+        buildSectionH();
+    }
+    recalculateSummary();
+}
+
+// -----------------------------
+// Controls wiring
+// -----------------------------
+function initControls(){
+    const sel = document.getElementById("scenarioSelect");
+    if(sel){
+        sel.innerHTML = SCENARIOS.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+    }
+
+    const btnApply = document.getElementById("btnApplyScenario");
+    if(btnApply){
+        btnApply.addEventListener("click", ()=>{
+            const id = sel ? sel.value : "base";
+            const sc = SCENARIOS.find(x=>x.id===id);
+            if(!sc) return;
+
+            sectionBState.salesGrowth = sc.inputs.salesGrowth;
+            sectionBState.ebitdaMargin = sc.inputs.ebitdaMargin;
+            sectionBState.arDays = sc.inputs.arDays;
+            sectionBState.apDays = sc.inputs.apDays;
+            sectionBState.invDays = sc.inputs.invDays;
+
+            const upd=(id2,val)=>{ const el=document.getElementById(id2); if(el) el.value=val; };
+            upd("b_sg", sectionBState.salesGrowth);
+            upd("b_em", sectionBState.ebitdaMargin);
+            upd("b_ar", sectionBState.arDays);
+            upd("b_ap", sectionBState.apDays);
+            upd("b_inv", sectionBState.invDays);
+
+            recalculateAll(true);
+        });
+    }
+
+    const btnSave = document.getElementById("btnSave");
+    if(btnSave){
+        btnSave.addEventListener("click", ()=>{
+            saveDraft();
+            alert("Draft saved to localStorage.");
+        });
+    }
+
+    const btnReset = document.getElementById("btnReset");
+    if(btnReset){
+        btnReset.addEventListener("click", ()=> resetDraft());
+    }
+
+    const btnExport = document.getElementById("btnExport");
+    if(btnExport){
+        btnExport.addEventListener("click", ()=> window.print());
+    }
+}
+
+// -----------------------------
+// Init (restores draft safely; no syntax traps)
+// -----------------------------
+(function init(){
+    const draft = loadDraft();
+    if(draft){
+        try{
+            if(draft.sectionBState) Object.assign(sectionBState, draft.sectionBState);
+
+            if(draft.historicalData && typeof draft.historicalData === "object"){
+                Object.assign(historicalData, draft.historicalData);
+            }
+
+            if(Array.isArray(draft.companyFacilities)){
+                companyFacilities.splice(0, companyFacilities.length, ...draft.companyFacilities);
+            }
+            if(Array.isArray(draft.directorFacilities)){
+                directorFacilities.splice(0, directorFacilities.length, ...draft.directorFacilities);
+            }
+            if(Array.isArray(draft.proposedFacilities)){
+                proposedFacilities.splice(0, proposedFacilities.length, ...draft.proposedFacilities);
+            }
+
+            if(draft.bankRulesFull && typeof draft.bankRulesFull === "object"){
+                Object.assign(bankRulesFull, draft.bankRulesFull);
+            }
+            if(draft.bankRules && typeof draft.bankRules === "object"){
+                Object.assign(bankRules, draft.bankRules);
+            }
+        }catch(e){
+            // ignore bad drafts
+        }
+    }
+
+    buildSectionA();
+    buildSectionB();
     buildSectionC();
     buildSectionD();
+    buildSectionE();
+    buildSectionF();
     buildSectionG();
     buildSectionH();
-  } else {
-    buildSectionG();
-    buildSectionH();
-  }
-  recalculateSummary();
-}
-
-// -----------------------------
-// Controls
-// -----------------------------
-function initControls() {
-  const sel = document.getElementById("scenarioSelect");
-  if (sel) {
-    sel.innerHTML = SCENARIOS.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
-  }
-
-  const btnApply = document.getElementById("btnApplyScenario");
-  if (btnApply) {
-    btnApply.addEventListener("click", () => {
-      const id = sel ? sel.value : "base";
-      const sc = SCENARIOS.find(x => x.id === id);
-      if (!sc) return;
-
-      sectionBState.salesGrowth = sc.inputs.salesGrowth;
-      sectionBState.ebitdaMargin = sc.inputs.ebitdaMargin;
-      sectionBState.arDays = sc.inputs.arDays;
-      sectionBState.apDays = sc.inputs.apDays;
-      sectionBState.invDays = sc.inputs.invDays;
-
-      const upd = (id2, val) => {
-        const el = document.getElementById(id2);
-        if (el) el.value = val;
-      };
-      upd("b_sg", sectionBState.salesGrowth);
-      upd("b_em", sectionBState.ebitdaMargin);
-      upd("b_ar", sectionBState.arDays);
-      upd("b_ap", sectionBState.apDays);
-      upd("b_inv", sectionBState.invDays);
-
-      recalculateAll(true);
-    });
-  }
-
-  const btnSave = document.getElementById("btnSave");
-  if (btnSave) btnSave.addEventListener("click", () => { saveDraft(); alert("Draft saved to localStorage."); });
-
-  const btnReset = document.getElementById("btnReset");
-  if (btnReset) btnReset.addEventListener("click", () => resetDraft());
-
-  const btnExport = document.getElementById("btnExport");
-  if (btnExport) btnExport.addEventListener("click", () => window.print());
-}
-
-// -----------------------------
-// Init
-// -----------------------------
-(function init() {
-  // Restore draft if exists (FIXED: correct spread syntax, no ".draft" bug)
-  const draft = loadDraft();
-  if (draft) {
-    try {
-      if (draft.sectionBState) Object.assign(sectionBState, draft.sectionBState);
-
-      if (draft.historicalData && typeof draft.historicalData === "object") {
-        Object.assign(historicalData, draft.historicalData);
-      }
-
-      if (Array.isArray(draft.companyFacilities)) {
-        companyFacilities.splice(0, companyFacilities.length, ...draft.companyFacilities);
-      }
-
-      if (Array.isArray(draft.directorFacilities)) {
-        directorFacilities.splice(0, directorFacilities.length, ...draft.directorFacilities);
-      }
-
-      if (Array.isArray(draft.proposedFacilities)) {
-        proposedFacilities.splice(0, proposedFacilities.length, ...draft.proposedFacilities);
-      }
-
-      if (draft.bankRulesFull && typeof draft.bankRulesFull === "object") {
-        Object.assign(bankRulesFull, draft.bankRulesFull);
-      }
-    } catch (e) {
-      // If draft is malformed, ignore and proceed with injected defaults
-    }
-  }
-
-  buildSectionA();
-  buildSectionB();
-  buildSectionC();
-  buildSectionD();
-  buildSectionE();
-  buildSectionF();
-  buildSectionG();
-  buildSectionH();
-  initControls();
-  recalculateSummary();
+    initControls();
+    recalculateSummary();
 })();
