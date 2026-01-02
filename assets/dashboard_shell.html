@@ -1,384 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MyTutor DSCR Dashboard</title>
-  <style>
-    :root{
-      --bg:#0b1220;
-      --card:#101a2f;
-      --card2:#0f1930;
-      --text:#e9eefc;
-      --muted:#aab4d6;
-      --muted2:#7f8bb5;
-      --line:#22345c;
-      --line2:#1e2d51;
-      --accent:#6ea8fe;
-      --accent2:#66d9e8;
-      --warn:#ffd43b;
-      --bad:#ff6b6b;
-      --good:#51cf66;
-      --pill:#172545;
-      --shadow: 0 10px 26px rgba(0,0,0,.35);
-      --radius: 14px;
-      --radius2: 10px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-    }
-    html,body{height:100%}
-    body{
-      margin:0;
-      background: radial-gradient(1200px 700px at 10% 0%, #14234a 0%, #0b1220 40%, #070c16 100%);
-      color:var(--text);
-      font-family: var(--sans);
-    }
-    a{color:var(--accent)}
-    .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 44px}
-    .topbar{
-      display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
-      margin-bottom:18px;
-    }
-    .brand h1{
-      margin:0;
-      font-size:22px; letter-spacing:.2px;
-    }
-    .brand .sub{
-      margin-top:4px;
-      color:var(--muted);
-      font-size:12.5px;
-    }
-    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    button{
-      border:1px solid var(--line);
-      background: linear-gradient(180deg, #16264b 0%, #0f1c38 100%);
-      color:var(--text);
-      padding:9px 12px;
-      border-radius: 10px;
-      box-shadow: var(--shadow);
-      cursor:pointer;
-      font-size:12.5px;
-    }
-    button.secondary{
-      background: transparent;
-      box-shadow:none;
-    }
-    button:hover{filter:brightness(1.06)}
-    .grid{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:14px;
-    }
-    @media (max-width: 980px){
-      .grid{grid-template-columns:1fr}
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(16,26,47,.92) 0%, rgba(12,19,36,.92) 100%);
-      border:1px solid var(--line2);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .card .hd{
-      padding:14px 16px;
-      border-bottom:1px solid var(--line2);
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
-      background: rgba(13, 23, 43, .65);
-    }
-    .card .hd .ttl{
-      font-weight:700;
-      font-size:13.5px;
-      letter-spacing:.15px;
-    }
-    .card .hd .tag{
-      font-size:11.5px;
-      color:var(--muted);
-      display:flex;align-items:center;gap:8px;
-    }
-    .card .bd{padding:14px 16px}
-    .mini{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:10px;
-    }
-    @media (max-width: 720px){
-      .mini{grid-template-columns:1fr}
-    }
-    .kpi{
-      background: rgba(10, 16, 30, .55);
-      border:1px solid var(--line2);
-      border-radius: 12px;
-      padding:12px 12px;
-    }
-    .kpi .k{font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.6px}
-    .kpi .v{margin-top:6px;font-size:18px;font-weight:800}
-    .kpi .v small{font-size:12px;font-weight:600;color:var(--muted)}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:6px 10px;
-      border-radius: 999px;
-      background: rgba(23, 37, 69, .85);
-      border:1px solid var(--line2);
-      font-size:12px;
-      color: var(--muted);
-    }
-    .pill b{color:var(--text)}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .note{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
-    }
-    .split{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
-    }
-    .sectionTitle{
-      font-weight:800;
-      font-size:13px;
-      letter-spacing:.2px;
-      margin:0 0 8px;
-      display:flex;justify-content:space-between;align-items:center;gap:10px;
-    }
-    .muted{color:var(--muted)}
-    .table{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0;
-      overflow:hidden;
-      border:1px solid var(--line2);
-      border-radius: 12px;
-      background: rgba(9, 14, 26, .35);
-    }
-    .table th, .table td{
-      padding:10px 10px;
-      border-bottom:1px solid rgba(34, 52, 92, .55);
-      font-size:12.5px;
-    }
-    .table th{
-      background: rgba(15, 25, 48, .9);
-      color: var(--muted);
-      font-weight:700;
-      text-align:left;
-      position:sticky;
-      top:0;
-      z-index:1;
-    }
-    .table tr:last-child td{border-bottom:none}
-    .table td.num{text-align:right;font-variant-numeric: tabular-nums}
-    .table td.center{text-align:center}
-    input[type="text"], input[type="number"], select{
-      width:100%;
-      box-sizing:border-box;
-      padding:8px 8px;
-      border-radius:10px;
-      border:1px solid rgba(34, 52, 92, .75);
-      background: rgba(10, 16, 30, .8);
-      color: var(--text);
-      outline:none;
-      font-size:12.5px;
-    }
-    input[type="number"]{font-variant-numeric: tabular-nums}
-    .hint{
-      font-size:11.5px;
-      color: var(--muted2);
-      margin-top:8px;
-    }
-    .bad{color:var(--bad)}
-    .good{color:var(--good)}
-    .warn{color:var(--warn)}
-    .mono{font-family:var(--mono)}
-    .divider{height:1px;background:rgba(34, 52, 92, .55);margin:12px 0}
-    .two{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width: 720px){
-      .two{grid-template-columns:1fr}
-    }
-    .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .inline label{font-size:12px;color:var(--muted)}
-    .inline .field{min-width:220px}
-    .smallBtn{padding:7px 10px;font-size:12px;border-radius:10px}
-    .ghost{background:transparent;box-shadow:none}
-    .formulaBox{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius: 12px;
-      border:1px dashed rgba(34, 52, 92, .75);
-      background: rgba(10, 16, 30, .55);
-      color: var(--muted);
-      white-space:pre-wrap;
-      font-size:12px;
-      line-height:1.45;
-    }
-  </style>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Financial Projection & DSCR Calculator</title>
+    <style>
+        :root{
+            --primary:#4f46e5;
+            --primary-2:#4338ca;
+            --bg:#f5f7fb;
+            --card:#ffffff;
+            --text:#0f172a;
+            --muted:#64748b;
+            --line:#e2e8f0;
+            --good:#16a34a;
+            --bad:#dc2626;
+            --warn:#d97706;
+        }
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+            background:var(--bg);
+            color:var(--text);
+        }
+        header{
+            background:linear-gradient(135deg,var(--primary),var(--primary-2));
+            color:#fff;
+            padding:18px 18px;
+        }
+        .wrap{max-width:1200px;margin:0 auto;padding:18px}
+        h1{margin:0;font-size:20px;letter-spacing:.2px}
+        .sub{margin-top:6px;opacity:.92;font-size:12.5px}
+        .grid{
+            display:grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap:14px;
+            margin-top:14px;
+        }
+        @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+        .card{
+            background:var(--card);
+            border:1px solid var(--line);
+            border-radius:14px;
+            box-shadow:0 6px 18px rgba(15, 23, 42, .06);
+            overflow:hidden;
+        }
+        .card .hd{
+            padding:12px 14px;
+            border-bottom:1px solid var(--line);
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:10px;
+        }
+        .card .ttl{font-weight:800;font-size:13.5px}
+        .card .tag{font-size:12px;color:var(--muted)}
+        .card .bd{padding:14px}
+        .pill{
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            padding:6px 10px;
+            border-radius:999px;
+            background:#eef2ff;
+            border:1px solid #e0e7ff;
+            color:#3730a3;
+            font-size:12px;
+            font-weight:700;
+        }
+        .mini{
+            display:grid;
+            grid-template-columns:repeat(3,1fr);
+            gap:10px;
+        }
+        @media (max-width: 720px){ .mini{grid-template-columns:1fr} }
+        .kpi{
+            border:1px solid var(--line);
+            border-radius:12px;
+            padding:12px;
+            background:#fff;
+        }
+        .kpi .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+        .kpi .v{margin-top:6px;font-size:18px;font-weight:900}
+        .note{font-size:12.5px;color:var(--muted);line-height:1.45}
+        .divider{height:1px;background:var(--line);margin:12px 0}
+        .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+        button{
+            border:1px solid var(--line);
+            background:#fff;
+            color:var(--text);
+            padding:9px 12px;
+            border-radius:10px;
+            cursor:pointer;
+            font-size:12.5px;
+            box-shadow:0 4px 14px rgba(15, 23, 42, .06);
+        }
+        button.primary{
+            background:var(--primary);
+            border-color:var(--primary);
+            color:#fff;
+        }
+        button:hover{filter:brightness(1.02)}
+        select, input[type="text"], input[type="number"]{
+            width:100%;
+            padding:8px 8px;
+            border-radius:10px;
+            border:1px solid var(--line);
+            background:#fff;
+            font-size:12.5px;
+            outline:none;
+        }
+        .table{
+            width:100%;
+            border-collapse:separate;
+            border-spacing:0;
+            border:1px solid var(--line);
+            border-radius:12px;
+            overflow:hidden;
+            background:#fff;
+        }
+        .table th,.table td{
+            padding:10px 10px;
+            border-bottom:1px solid var(--line);
+            font-size:12.5px;
+        }
+        .table th{
+            background:#f8fafc;
+            font-weight:800;
+            color:#334155;
+            text-align:left;
+        }
+        .table tr:last-child td{border-bottom:none}
+        .num{text-align:right;font-variant-numeric: tabular-nums}
+        .center{text-align:center}
+        .good{color:var(--good);font-weight:800}
+        .bad{color:var(--bad);font-weight:800}
+        .warn{color:var(--warn);font-weight:800}
+        .formula{
+            border:1px dashed var(--line);
+            background:#f8fafc;
+            padding:10px 12px;
+            border-radius:12px;
+            font-size:12px;
+            color:var(--muted);
+            white-space:pre-wrap;
+        }
+        .section{margin-top:14px}
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand">
-        <h1>MyTutor DSCR Dashboard</h1>
+<header>
+    <div class="wrap">
+        <h1>Financial Projection & DSCR Calculator</h1>
         <div class="sub">Audited extraction → projection → commitments → bank DSCR (latest audited year)</div>
-      </div>
-      <div class="actions">
-        <button id="btnSave" class="secondary">Save Draft</button>
-        <button id="btnReset" class="secondary">Reset Draft</button>
-        <button id="btnExport">Export HTML (Print)</button>
-      </div>
     </div>
+</header>
 
+<div class="wrap">
     <div class="grid">
-      <div class="card">
+        <div class="card">
+            <div class="hd">
+                <div class="ttl">Summary</div>
+                <div class="tag">
+                    <span class="pill">Latest audited year: <span id="latestYear">-</span></span>
+                    <span class="pill">Bank model: <span id="sumBankModel">-</span></span>
+                </div>
+            </div>
+            <div class="bd">
+                <div class="mini">
+                    <div class="kpi">
+                        <div class="k">EBITDA (latest audited)</div>
+                        <div class="v" id="sumEbitda">-</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="k">Debt Service (existing + proposed)</div>
+                        <div class="v" id="sumDebtService">-</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="k">DSCR (latest audited)</div>
+                        <div class="v" id="sumDscr">-</div>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="note">
+                    Section H uses <b>latest audited year only</b> and derives bank/model options from <b>bankRulesFull</b>.
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="hd">
+                <div class="ttl">Controls</div>
+                <div class="tag">Scenario presets update Section B inputs</div>
+            </div>
+            <div class="bd">
+                <div class="inline" style="margin-bottom:10px">
+                    <div style="min-width:220px">
+                        <div class="note" style="margin-bottom:6px">Scenario</div>
+                        <select id="scenarioSelect"></select>
+                    </div>
+                    <button class="primary" id="btnApplyScenario">Apply</button>
+                    <button id="btnSave">Save Draft</button>
+                    <button id="btnReset">Reset Draft</button>
+                    <button id="btnExport">Export (Print)</button>
+                </div>
+                <div class="note">Edits are stored locally (draft restore). Use Reset Draft to clear localStorage.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section card">
         <div class="hd">
-          <div class="ttl">Summary</div>
-          <div class="tag">
-            <span class="pill">Latest audited year: <b id="latestYear">-</b></span>
-            <span class="pill">Bank model: <b id="sumBankModel">-</b></span>
-          </div>
+            <div class="ttl">Section A — Audited / Management Accounts</div>
+            <div class="tag">Extracted values (flexible years)</div>
         </div>
         <div class="bd">
-          <div class="mini">
-            <div class="kpi">
-              <div class="k">EBITDA (latest audited)</div>
-              <div class="v" id="sumEbitda">-</div>
-            </div>
-            <div class="kpi">
-              <div class="k">Debt Service (existing + proposed)</div>
-              <div class="v" id="sumDebtService">-</div>
-            </div>
-            <div class="kpi">
-              <div class="k">DSCR (latest audited)</div>
-              <div class="v" id="sumDscr">-</div>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="note">
-            Section H uses <b>latest audited year only</b> and derives bank/model options from <span class="mono">bankRulesFull</span>.
-          </div>
+            <div id="sectionA"></div>
         </div>
-      </div>
+    </div>
 
-      <div class="card">
+    <div class="section card">
         <div class="hd">
-          <div class="ttl">Controls</div>
-          <div class="tag muted">Scenario presets update Section B inputs</div>
+            <div class="ttl">Section B — Projection Inputs</div>
+            <div class="tag">Editable inputs drive C/D</div>
         </div>
         <div class="bd">
-          <div class="inline">
-            <label>Scenario</label>
-            <div class="field"><select id="scenarioSelect"></select></div>
-            <button id="btnApplyScenario" class="smallBtn">Apply</button>
-          </div>
-          <div class="hint">Edits are stored locally (draft restore). Use Reset Draft to clear localStorage.</div>
+            <div id="sectionB"></div>
         </div>
-      </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section A — Audited / Management Accounts</div>
-        <div class="tag muted">Extracted values (flexible years)</div>
-      </div>
-      <div class="bd">
-        <div id="sectionA"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section C — Projections</div>
+            <div class="tag">Computed from Section B inputs</div>
+        </div>
+        <div class="bd">
+            <div id="sectionC"></div>
+        </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section B — Projection Inputs</div>
-        <div class="tag muted">Editable inputs drive C/D</div>
-      </div>
-      <div class="bd">
-        <div id="sectionB"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section D — Working Capital Requirement (WCR)</div>
+            <div class="tag">Computed from B + C</div>
+        </div>
+        <div class="bd">
+            <div id="sectionD"></div>
+        </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section C — Projections</div>
-        <div class="tag muted">Computed from Section B inputs</div>
-      </div>
-      <div class="bd">
-        <div id="sectionC"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section E — Existing Commitments</div>
+            <div class="tag">Editable</div>
+        </div>
+        <div class="bd">
+            <div id="sectionE"></div>
+        </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section D — Working Capital Requirement (WCR)</div>
-        <div class="tag muted">Computed from B + C</div>
-      </div>
-      <div class="bd">
-        <div id="sectionD"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section F — Proposed Facilities</div>
+            <div class="tag">Add rows</div>
+        </div>
+        <div class="bd">
+            <div id="sectionF"></div>
+        </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section E — Existing Commitments</div>
-        <div class="tag muted">Editable</div>
-      </div>
-      <div class="bd">
-        <div id="sectionE"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section G — Totals (E + F)</div>
+            <div class="tag">Reconciliation</div>
+        </div>
+        <div class="bd">
+            <div id="sectionG"></div>
+        </div>
     </div>
 
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section F — Proposed Facilities</div>
-        <div class="tag muted">Add rows/columns</div>
-      </div>
-      <div class="bd">
-        <div id="sectionF"></div>
-      </div>
-    </div>
-
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section G — Totals (E + F)</div>
-        <div class="tag muted">Reconciliation</div>
-      </div>
-      <div class="bd">
-        <div id="sectionG"></div>
-      </div>
-    </div>
-
-    <div style="height:14px"></div>
-
-    <div class="card">
-      <div class="hd">
-        <div class="ttl">Section H — Bank DSCR Analysis (Latest Audited Year Only)</div>
-        <div class="tag muted">Bank/model from bankRulesFull</div>
-      </div>
-      <div class="bd">
-        <div id="sectionH"></div>
-      </div>
+    <div class="section card">
+        <div class="hd">
+            <div class="ttl">Section H — Bank DSCR Analysis (Latest Audited Year Only)</div>
+            <div class="tag">Bank/model from bankRulesFull</div>
+        </div>
+        <div class="bd">
+            <div id="sectionH"></div>
+        </div>
     </div>
 
     <div style="height:18px"></div>
-
     <div class="note">
-      Generated dashboards are self-contained HTML. Local drafts are stored in <span class="mono">localStorage</span>.
+        Generated dashboards are self-contained HTML. Local drafts are stored in <b>localStorage</b>.
     </div>
-  </div>
+</div>
 
-  <script>
-  // [PART A: DATA INJECTION]
+<script>
+    // [PART A: DATA INJECTION]
