@@ -1,44 +1,412 @@
-/* =========================================================
-   READABILITY PATCH (override)
-   Paste at END of <style> in dashboard_shell.html
-   ========================================================= */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DSCR Debt Capacity Dashboard</title>
 
-/* Keep the blue header but increase contrast for subtitle */
-.topbar .sub{
-  color: rgba(255,255,255,.85) !important;
+  <style>
+:root{
+  /* Higher contrast palette for legibility */
+  --primary:#1e40af;   /* deep blue */
+  --primary2:#2563eb;  /* blue */
+  --bg:#f8fafc;        /* slate-50 */
+  --card:#ffffff;
+  --text:#0b1220;      /* near-black */
+  --muted:#475569;     /* slate-600 */
+  --line:#dbe2ea;      /* stronger borders */
+  --good:#15803d;
+  --bad:#b91c1c;
+  --warn:#b45309;
 }
 
-/* Make summary cards truly readable */
-.summary-card{
-  background: #ffffff !important;             /* solid white */
-  border: 1px solid rgba(255,255,255,.25) !important;
-  box-shadow: 0 6px 16px rgba(0,0,0,.12) !important;
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
 }
 
-/* Labels should be dark (not white) on white card */
-.summary-label{
-  color: #334155 !important;                  /* slate */
-  opacity: 1 !important;
+.container{
+  max-width:1200px;
+  margin:0 auto;
+  padding:16px;
 }
 
-/* Values should be dark */
-.summary-value{
-  color: #0f172a !important;                  /* near-black */
+/* Header */
+.header{
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  color:#fff;
+  padding:18px 16px;
+}
+.header .container{padding:0 16px}
+.h-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.h-sub{
+  margin-top:6px;
+  color:rgba(255,255,255,.88); /* improved contrast */
+  font-size:12.5px;
 }
 
-/* If you have .small variant, ensure it stays dark too */
-.summary-value.small{
-  color: #0f172a !important;
+/* Summary grid */
+.summary-grid{
+  display:grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap:14px;
+  margin-top:14px;
+}
+@media (max-width: 980px){
+  .summary-grid{grid-template-columns:1fr}
 }
 
-/* Make the "pill" readable too (if it appears on blue header area) */
+/* Cards */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:0 6px 18px rgba(15,23,42,.10); /* slightly stronger */
+  overflow:hidden;
+}
+.card-header{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  background:#f8fafc; /* readable header background */
+}
+.card-title{
+  font-weight:800;
+  font-size:13.5px;
+  color:var(--text);
+}
+.card-body{padding:14px}
+
+.pills{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
 .pill{
-  background: rgba(255,255,255,.92) !important;
-  border: 1px solid rgba(255,255,255,.65) !important;
-  color: #0f172a !important;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#ffffff;              /* readable */
+  border:1px solid #cbd5e1;        /* slate-300 */
+  color:#0f172a;                   /* dark */
+  font-size:12px;
+  font-weight:700;
 }
 
-/* Optional: slightly reduce extreme saturation in the header gradient */
-.topbar{
-  background: linear-gradient(135deg, #1e40af, #2563eb) !important;
+.note{
+  font-size:12.5px;
+  color:var(--muted);
+  line-height:1.45;
 }
+
+.btn-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+button{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--text);
+  padding:9px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:12.5px;
+  box-shadow:0 4px 14px rgba(15,23,42,.06);
+}
+button.primary{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#fff;
+}
+button:hover{filter:brightness(1.02)}
+
+select,input[type="text"],input[type="number"]{
+  width:100%;
+  padding:8px 8px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#fff;
+  font-size:12.5px;
+  outline:none;
+  color:var(--text);
+}
+
+/* Tables: stronger header + zebra striping */
+.table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+.table th,.table td{
+  padding:10px 10px;
+  border-bottom:1px solid var(--line);
+  font-size:12.5px;
+  color:var(--text);
+}
+.table th{
+  background:#eef2f7; /* stronger contrast */
+  font-weight:800;
+  color:#0f172a;
+  text-align:left;
+}
+.table tbody tr:nth-child(even){
+  background:#fbfdff;
+}
+.table tr:last-child td{border-bottom:none}
+
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.good{color:var(--good);font-weight:800}
+.bad{color:var(--bad);font-weight:800}
+.warn{color:var(--warn);font-weight:800}
+
+.formula{
+  border:1px dashed var(--line);
+  background:#f8fafc;
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:12px;
+  color:var(--muted);
+  white-space:pre-wrap;
+}
+
+.section{margin-top:14px}
+
+/* Layout blocks */
+.dashboard-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:14px;
+  margin-top:14px;
+}
+.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.small{
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* Gauge */
+.gauge-wrap{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.gauge{
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  background:conic-gradient(var(--primary) 0deg, #e2e8f0 0deg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.gauge::after{
+  content:"";
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:#fff;
+  position:absolute;
+}
+.gauge .gauge-text{
+  position:relative;
+  z-index:1;
+  text-align:center;
+}
+.gauge .gauge-text .v{
+  font-size:22px;
+  font-weight:900;
+  color:var(--text); /* ensure readable */
+}
+.gauge .gauge-text .k{
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+.divider{height:1px;background:var(--line);margin:12px 0}
+.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* Ensure summary numbers are always dark */
+#sumDscr,#sumEbitda,#sumDebtService,#latestYear,#sumBankModel{color:var(--text)!important;}
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="container">
+      <div class="h-title">DSCR Debt Capacity Dashboard</div>
+      <div class="h-sub">Audited extraction → projection → commitments → bank DSCR (latest audited year)</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Summary / Controls -->
+    <div class="summary-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Summary</div>
+          <div class="pills">
+            <span class="pill">Latest audited year: <span id="latestYear">-</span></span>
+            <span class="pill">Bank/model: <span id="sumBankModel">-</span></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="gauge-wrap">
+            <div class="gauge" id="dscrGauge">
+              <div class="gauge-text">
+                <div class="v" id="sumDscr">-</div>
+                <div class="k">DSCR</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:240px">
+              <div class="note"><b>EBITDA (latest audited):</b> <span id="sumEbitda">-</span></div>
+              <div class="note" style="margin-top:6px"><b>Debt service (annual):</b> <span id="sumDebtService">-</span></div>
+              <div class="divider"></div>
+              <div class="note">Section H uses latest audited year only. Facilities are editable; projections compute from Section B.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Controls</div>
+          <div class="small">Scenario presets update Section B inputs</div>
+        </div>
+        <div class="card-body">
+          <div class="inline" style="margin-bottom:10px">
+            <div style="min-width:220px">
+              <div class="small" style="margin-bottom:6px">Scenario</div>
+              <select id="scenarioSelect"></select>
+            </div>
+            <button class="primary" id="btnApplyScenario">Apply</button>
+            <button id="btnSave">Save Draft</button>
+            <button id="btnReset">Reset Draft</button>
+            <button id="btnExport">Export (Print)</button>
+          </div>
+          <div class="note">Draft is stored in localStorage. Use Reset Draft to clear localStorage.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section A — Audited / Management Accounts</div>
+          <div class="small">Extracted values (flexible years)</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionABody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section B — Projection Inputs</div>
+          <div class="small">Editable inputs drive C/D</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionBBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section C — Projections</div>
+          <div class="small">Computed from Section B inputs</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionCBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section D — Working Capital Requirement (WCR)</div>
+          <div class="small">Computed from B + C</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionDBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section E — Existing Commitments</div>
+          <div class="small">Editable</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionEBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section F — Proposed Facilities</div>
+          <div class="small">Add rows</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionFBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section G — Totals (E + F)</div>
+          <div class="small">Reconciles E + F</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionGBody"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header section-title">
+          <div class="card-title">Section H — Bank DSCR Analysis (Latest Audited Year Only)</div>
+          <div class="small">Bank/model from bankRulesFull</div>
+        </div>
+        <div class="card-body">
+          <div id="sectionHBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:18px"></div>
+    <div class="note">Generated dashboards are self-contained HTML. Local drafts are stored in <b>localStorage</b>.</div>
+  </div>
+
+  <script>
+    // [PART A: DATA INJECTION]
