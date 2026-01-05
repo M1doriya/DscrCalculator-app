@@ -2,6 +2,9 @@ import json
 from pathlib import Path
 import streamlit as st
 
+# -----------------------------
+# Repo layout (must match GitHub)
+# -----------------------------
 ASSETS_DIR = Path("assets")
 RULES_DIR = Path("rules")
 
@@ -12,6 +15,9 @@ BANKRULES_PATH = RULES_DIR / "bankRules.json"
 INJECTION_MARKER = "// [PART A: DATA INJECTION]"
 
 
+# -----------------------------
+# Utilities
+# -----------------------------
 def strip_code_fences(s: str) -> str:
     s = (s or "").strip()
     if s.startswith("```"):
@@ -32,18 +38,15 @@ def load_json(path: Path) -> dict:
 def split_shell(shell_html: str) -> tuple[str, str]:
     idx = shell_html.find(INJECTION_MARKER)
     if idx == -1:
-        raise ValueError(f"Injection marker not found: {INJECTION_MARKER}")
+        raise ValueError(f"Injection marker not found in dashboard_shell.html: {INJECTION_MARKER}")
     prefix = shell_html[: idx + len(INJECTION_MARKER)]
     suffix = shell_html[idx + len(INJECTION_MARKER) :]
     return prefix, suffix
 
 
 def derive_bank_rules(bank_rules_full: dict) -> dict:
-    """
-    Derived from bankRulesFull only (no hardcoding).
-    Keep this lightweight map if your engine expects `bankRules` too.
-    """
-    out = {}
+    """Derived from bankRulesFull only (no hardcoding). Shape matches dscr_fixed_v3 engine expectations."""
+    out: dict = {}
     banks = bank_rules_full.get("banks") or {}
     for bank_name, bank_obj in banks.items():
         models = bank_obj.get("models") or {}
@@ -52,20 +55,36 @@ def derive_bank_rules(bank_rules_full: dict) -> dict:
         out[bank_name] = {
             "allowFinancial": bool(fin.get("enabled")),
             "allowNonFinancial": bool(non.get("enabled")),
-            "minFinancial": fin.get("min_dscr"),
-            "minNonFinancial": non.get("min_dscr"),
+            "minFinancial": fin.get("min_dscr") if fin.get("min_dscr") is not None else None,
+            "minNonFinancial": non.get("min_dscr") if non.get("min_dscr") is not None else None,
         }
     return out
 
 
 def validate_payload(p: dict) -> list[str]:
-    issues = []
+    issues: list[str] = []
+
     required = ["auditedYearsDetected", "historicalData", "companyFacilities", "directorFacilities"]
     for k in required:
         if k not in p:
             issues.append(f"Missing required key: {k}")
-    if "auditedYearsDetected" in p and not p.get("auditedYearsDetected"):
-        issues.append("auditedYearsDetected is empty (must include at least one audited year).")
+
+    years = p.get("auditedYearsDetected")
+    if isinstance(years, list):
+        if not years:
+            issues.append("auditedYearsDetected is empty (must include at least one audited year).")
+        elif not all(isinstance(x, int) for x in years):
+            issues.append("auditedYearsDetected must be an array of integers (e.g., [2022, 2023, 2024]).")
+    else:
+        issues.append("auditedYearsDetected must be an array.")
+
+    hist = p.get("historicalData")
+    if isinstance(hist, dict):
+        if not any(k.startswith("fy") for k in hist.keys()):
+            issues.append("historicalData must contain at least one fyYYYY object (e.g., fy2024).")
+    else:
+        issues.append("historicalData must be an object/dict.")
+
     return issues
 
 
@@ -75,9 +94,8 @@ def build_injection_block(payload: dict) -> str:
     company_fac = payload.get("companyFacilities", [])
     director_fac = payload.get("directorFacilities", [])
 
-    # CRITICAL: bankRulesFull must exist for Section H and draft logic
     bank_rules_full = payload.get("bankRulesFull")
-    if not bank_rules_full:
+    if bank_rules_full is None:
         bank_rules_full = load_json(BANKRULES_PATH)
 
     bank_rules = derive_bank_rules(bank_rules_full)
@@ -85,12 +103,11 @@ def build_injection_block(payload: dict) -> str:
     def js(obj) -> str:
         return json.dumps(obj, ensure_ascii=False)
 
-    # IMPORTANT: inject bankRulesFull, then bankRules
     return "\n".join(
         [
             "",
             "        // =============================================",
-            "        // [INJECTED BY STREAMLIT ASSEMBLER]",
+            "        // [INJECTED BY STREAMLIT ASSEMBLER]  DO NOT EDIT",
             "        // =============================================",
             f"        const auditedYearsDetected = {js(audited_years)};",
             f"        const historicalData = {js(historical)};",
@@ -100,9 +117,8 @@ def build_injection_block(payload: dict) -> str:
             "        // Derived from bankRulesFull only (never hardcoded)",
             f"        const bankRules = {js(bank_rules)};",
             "",
-            "        // Compatibility aliases (safe no-ops if unused by the engine)",
-            "        const existingCommitments = companyFacilities;",
-            "        const directorsCommitments = directorFacilities;",
+            "        // Debug hook (optional): inspect in browser console via window.__DSCR_PAYLOAD__",
+            f"        window.__DSCR_PAYLOAD__ = {js(payload)};",
             "",
         ]
     )
@@ -115,14 +131,34 @@ def assemble_html(payload: dict) -> str:
     prefix, _suffix = split_shell(shell)
     injection = build_injection_block(payload)
 
-    # Shell ends inside <script>; engine ends before </script>
-    return "".join([prefix, injection, "\n", engine, "\n</script></body></html>\n"])
+    # dashboard_shell.html intentionally ends at the injection marker.
+    # dashboard_engine.txt contains the remainder of the JS (no </script>).
+    return "".join([prefix, injection, "\n", engine, "\n</script>\n</body>\n</html>\n"])
 
 
+# -----------------------------
+# Streamlit UI
+# -----------------------------
 st.set_page_config(page_title="DSCR Dashboard Assembler", layout="wide")
-st.title("DSCR Dashboard Assembler")
+st.title("DSCR Dashboard Assembler (dscr_fixed_v3 template)")
 
-st.write("Upload or paste a JSON payload and download a deterministically assembled DSCR dashboard HTML.")
+st.write(
+    "Upload or paste a JSON payload and download a deterministically assembled HTML dashboard "
+    "(layout/theme exactly matches dscr_fixed_v3)."
+)
+
+with st.expander("Repo structure (must match exactly)", expanded=False):
+    st.code(
+        """.
+├── app.py
+├── requirements.txt
+├── assets/
+│   ├── dashboard_shell.html
+│   └── dashboard_engine.txt
+└── rules/
+    └── bankRules.json
+"""
+    )
 
 raw = st.text_area("Paste JSON payload", height=260)
 up = st.file_uploader("Or upload JSON file", type=["json"])
@@ -164,11 +200,19 @@ except Exception as e:
     st.stop()
 
 st.success("HTML assembled successfully.")
+
 st.download_button(
     "Download DSCR Dashboard HTML",
     data=html_out.encode("utf-8"),
     file_name="dscr_dashboard.html",
     mime="text/html",
+)
+
+st.download_button(
+    "Download Payload JSON (backup)",
+    data=json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"),
+    file_name="dscr_payload.json",
+    mime="application/json",
 )
 
 with st.expander("View parsed payload (for troubleshooting)", expanded=False):
