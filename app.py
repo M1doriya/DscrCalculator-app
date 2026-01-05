@@ -7,9 +7,11 @@ RULES_DIR = Path("rules")
 
 SHELL_PATH = ASSETS_DIR / "dashboard_shell.html"
 ENGINE_PATH = ASSETS_DIR / "dashboard_engine.txt"
-BANKRULES_PATH = RULES_DIR / "bankRules.json"
+BANKRULES_FULL_PATH = RULES_DIR / "bankRules.json"
 
 INJECTION_MARKER = "// [PART A: DATA INJECTION]"
+
+APP_BUILD = "BUILD_001"  # change this each commit so you can confirm Streamlit deployed latest code
 
 
 def strip_code_fences(s: str) -> str:
@@ -22,7 +24,7 @@ def strip_code_fences(s: str) -> str:
 
 
 def load_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    return path.read_text(encoding="utf-8", errors="ignore")
 
 
 def load_json(path: Path) -> dict:
@@ -44,39 +46,58 @@ def validate_payload(p: dict) -> list[str]:
     for k in required:
         if k not in p:
             issues.append(f"Missing required key: {k}")
-
     if "auditedYearsDetected" in p and not p.get("auditedYearsDetected"):
         issues.append("auditedYearsDetected is empty (must include at least one audited year).")
-
-    # dscr_fixed_v3 engine expects bankRules (it exists in the original template)
-    # We can inject bankRules derived from bankRulesFull or from rules/bankRules.json,
-    # but best fidelity is to include bankRules in payload.
-    if "bankRules" not in p and "bankRulesFull" not in p and not BANKRULES_PATH.exists():
-        issues.append(
-            "Missing bankRules/bankRulesFull and rules/bankRules.json not found. "
-            "Provide bank rules or commit rules/bankRules.json."
-        )
     return issues
 
 
-def derive_bank_rules_minimal(bank_rules_full: dict) -> dict:
+def derive_bank_rules_from_full(bank_rules_full: dict) -> dict:
     """
-    Minimal fallback only.
-    IMPORTANT: dscr_fixed_v3 may use extra keys (turnoverMultiplier, adjustment, etc.)
-    If you want exact dscr_fixed_v3 behavior, include `bankRules` in payload.
+    Convert bankRulesFull (authoritative) into dscr_fixed_v3-style bankRules:
+
+      bankRules = {
+        "Bank": {
+          "allowFinancial": bool,
+          "allowNonFinancial": bool,
+          "minFinancial": number|null,
+          "minNonFinancial": number|null,
+          "turnoverMultiplier": 1.2 (optional),
+          "adjustment": "excludeOtherIncome" (optional)
+        }
+      }
+
+    - No hardcoded bank list (derived from keys).
+    - Optional fields derived from the *rule text*, not bank names.
     """
     out = {}
-    banks = bank_rules_full.get("banks") or {}
+    banks = (bank_rules_full or {}).get("banks") or {}
+
     for bank_name, bank_obj in banks.items():
-        models = bank_obj.get("models") or {}
+        models = (bank_obj or {}).get("models") or {}
         fin = models.get("financial") or {}
         non = models.get("non_financial") or {}
-        out[bank_name] = {
+
+        entry = {
             "allowFinancial": bool(fin.get("enabled")),
             "allowNonFinancial": bool(non.get("enabled")),
             "minFinancial": fin.get("min_dscr"),
             "minNonFinancial": non.get("min_dscr"),
         }
+
+        # Derived adjustment: excludeOtherIncome (if mentioned)
+        fin_text = (fin.get("formula_text") or "") + "\n" + (bank_obj.get("eligibility_notes") or "")
+        fin_text_l = fin_text.lower()
+        if "exclude" in fin_text_l and "other income" in fin_text_l:
+            entry["adjustment"] = "excludeOtherIncome"
+
+        # Derived turnoverMultiplier = 1.2 if rule mentions 20% note
+        non_text = (non.get("formula_text") or "") + "\n" + (bank_obj.get("eligibility_notes") or "")
+        non_text_l = non_text.lower()
+        if "20%" in non_text_l or "20 %" in non_text_l:
+            entry["turnoverMultiplier"] = 1.2
+
+        out[bank_name] = entry
+
     return out
 
 
@@ -86,35 +107,31 @@ def build_injection_block(payload: dict) -> str:
     company_fac = payload.get("companyFacilities", [])
     director_fac = payload.get("directorFacilities", [])
 
-    # dscr_fixed_v3 uses bankRules. Prefer payload.bankRules if provided.
+    # Prefer payload.bankRules (highest fidelity)
     bank_rules = payload.get("bankRules")
 
-    # bankRulesFull can come from payload, or repo file
+    # Otherwise derive from bankRulesFull (payload or rules/bankRules.json)
     bank_rules_full = payload.get("bankRulesFull")
-    if bank_rules_full is None and BANKRULES_PATH.exists():
-        bank_rules_full = load_json(BANKRULES_PATH)
-
-    # If bankRules isn't provided, derive a minimal fallback from bankRulesFull
     if bank_rules is None:
-        bank_rules = derive_bank_rules_minimal(bank_rules_full or {})
+        if bank_rules_full is None and BANKRULES_FULL_PATH.exists():
+            bank_rules_full = load_json(BANKRULES_FULL_PATH)
+        bank_rules = derive_bank_rules_from_full(bank_rules_full or {})
 
     def js(obj) -> str:
         return json.dumps(obj, ensure_ascii=False)
 
-    # IMPORTANT: define the same constants dscr_fixed_v3 expects.
-    # We also define bankRulesFull for your newer workflows (harmless if unused).
+    # IMPORTANT: names MUST match dscr_fixed_v3 constants
     return "\n".join(
         [
             "",
-            "  // =============================================",
-            "  // [INJECTED BY STREAMLIT ASSEMBLER]",
-            "  // =============================================",
-            f"  const auditedYearsDetected = {js(audited_years)};",
-            f"  const historicalData = {js(historical)};",
-            f"  const bankRules = {js(bank_rules)};",
-            f"  const companyFacilities = {js(company_fac)};",
-            f"  const directorFacilities = {js(director_fac)};",
-            f"  const bankRulesFull = {js(bank_rules_full or {})};",
+            "        // =============================================",
+            "        // [INJECTED BY STREAMLIT ASSEMBLER]",
+            "        // =============================================",
+            f"        const auditedYearsDetected = {js(audited_years)};",
+            f"        const historicalData = {js(historical)};",
+            f"        const bankRules = {js(bank_rules)};",
+            f"        const companyFacilities = {js(company_fac)};",
+            f"        const directorFacilities = {js(director_fac)};",
             "",
         ]
     )
@@ -122,9 +139,9 @@ def build_injection_block(payload: dict) -> str:
 
 def assemble_html(payload: dict) -> str:
     if not SHELL_PATH.exists():
-        raise FileNotFoundError(f"Missing shell: {SHELL_PATH}")
+        raise FileNotFoundError(f"Missing: {SHELL_PATH}")
     if not ENGINE_PATH.exists():
-        raise FileNotFoundError(f"Missing engine: {ENGINE_PATH}")
+        raise FileNotFoundError(f"Missing: {ENGINE_PATH}")
 
     shell = load_text(SHELL_PATH)
     engine = load_text(ENGINE_PATH)
@@ -132,30 +149,16 @@ def assemble_html(payload: dict) -> str:
     prefix, suffix = split_shell(shell)
     injection = build_injection_block(payload)
 
-    # CRITICAL FIX:
-    # - keep suffix (do NOT drop it)
-    # - do NOT append hardcoded </script></body></html>
-    # because engine extracted from dscr_fixed_v3 already includes the proper closings.
+    # CRITICAL: keep suffix and do NOT append closing tags manually.
+    # Engine (extracted from dscr_fixed_v3) includes correct closing tags.
     return "".join([prefix, injection, suffix, engine])
 
 
 st.set_page_config(page_title="DSCR Dashboard Assembler", layout="wide")
 st.title("DSCR Dashboard Assembler")
+st.sidebar.write("BUILD:", APP_BUILD)
 
-st.write(
-    "Upload or paste a JSON payload (from your Custom GPT) and download a deterministically assembled HTML dashboard."
-)
-
-with st.expander("Debug help", expanded=False):
-    st.markdown(
-        """
-Common issues:
-- JSON wrapped in ``` fences: this app strips them automatically.
-- Missing keys: must include auditedYearsDetected, historicalData, companyFacilities, directorFacilities.
-- If you want dscr_fixed_v3 bank logic 100% identical, include `bankRules` in the payload (same shape as dscr_fixed_v3).
-- Template files missing: ensure assets/ and rules/ are committed to GitHub exactly as named.
-"""
-    )
+st.write("Upload or paste your JSON payload and download the assembled dscr_fixed_v3 HTML dashboard.")
 
 raw = st.text_area("Paste JSON payload", height=260)
 up = st.file_uploader("Or upload JSON file", type=["json"])
@@ -211,5 +214,20 @@ st.download_button(
     mime="application/json",
 )
 
-with st.expander("View parsed payload (for troubleshooting)", expanded=False):
-    st.json(payload)
+with st.expander("Debug: what files Streamlit is really using (click to open)", expanded=False):
+    shell_txt = load_text(SHELL_PATH)
+    engine_txt = load_text(ENGINE_PATH)
+
+    st.write("SHELL exists:", SHELL_PATH.exists(), "path:", str(SHELL_PATH))
+    st.write("ENGINE exists:", ENGINE_PATH.exists(), "path:", str(ENGINE_PATH))
+
+    # These help confirm you are on the real dscr_fixed_v3 assets, not a simplified one
+    st.write("Shell contains gaugeNeedle:", "gaugeNeedle" in shell_txt)
+    st.write('Shell contains id="dscrGauge":', 'id="dscrGauge"' in shell_txt)
+    st.write("Engine contains ensureBankDropdown:", "ensureBankDropdown" in engine_txt)
+    st.write("Engine contains dscr_dashboard_state:", "dscr_dashboard_state" in engine_txt)
+
+    st.info(
+        "If these indicators do not match dscr_fixed_v3, you must regenerate assets locally using: "
+        "python tools/extract_fixed_v3_assets.py and commit assets/dashboard_shell.html and assets/dashboard_engine.txt."
+    )
