@@ -13,36 +13,38 @@ MARKER = "// [PART A: DATA INJECTION]"
 
 def main() -> None:
     if not SRC.exists():
-        raise SystemExit(f"Missing source template: {SRC}")
+        raise SystemExit(f"Missing template: {SRC}")
 
-    html = SRC.read_text(encoding="utf-8")
+    html = SRC.read_text(encoding="utf-8", errors="ignore")
 
-    # Find the beginning of DATA block: auditedYearsDetected
+    # Start at auditedYearsDetected
     m_start = re.search(r"\n\s*const\s+auditedYearsDetected\s*=", html)
     if not m_start:
-        raise SystemExit("Cannot find 'const auditedYearsDetected =' in dscr_fixed_v3.html")
+        raise SystemExit("Cannot find: const auditedYearsDetected = ...")
 
     data_start = m_start.start()
 
-    # Find the end of DATA block: after "const bankRules = ...;"
-    m_end = re.search(r"\n\s*const\s+bankRules\s*=\s*.*?;\s*\n", html[data_start:], flags=re.S)
+    # End after directorFacilities (dscr_fixed_v3 data block includes:
+    # auditedYearsDetected, historicalData, bankRules, companyFacilities, directorFacilities)
+    m_end = re.search(
+        r"\n\s*const\s+directorFacilities\s*=\s*.*?;\s*\n",
+        html[data_start:],
+        flags=re.S,
+    )
     if not m_end:
-        raise SystemExit("Cannot find 'const bankRules = ...;' after auditedYearsDetected")
+        raise SystemExit("Cannot find: const directorFacilities = ...; after auditedYearsDetected")
 
     data_end = data_start + m_end.end()
 
-    # Shell = everything BEFORE DATA block + marker inserted.
     shell = html[:data_start].rstrip() + "\n\n  " + MARKER + "\n"
-
-    # Engine = everything AFTER DATA block (includes rest of <script> and closing tags).
-    engine = html[data_end:]
+    engine = html[data_end:]  # keep everything else verbatim, including closing tags
 
     OUT_SHELL.write_text(shell, encoding="utf-8")
     OUT_ENGINE.write_text(engine, encoding="utf-8")
 
-    print("OK - generated:")
-    print(f"- {OUT_SHELL}")
-    print(f"- {OUT_ENGINE}")
+    print("Generated:")
+    print(" -", OUT_SHELL)
+    print(" -", OUT_ENGINE)
 
 
 if __name__ == "__main__":
